@@ -377,3 +377,40 @@ The HeurChain architecture draws on research in cognitive developmental psycholo
 
 **Cole, M., & Cole, S. R. (1993).** *The Development of Children* (2nd ed.). Scientific American Books / W.H. Freeman.
 > The primary source text from which the memory strategy research was drawn for this architecture. Chapter 12 ("Cognitive and Biological Development") covers clustering strategies, deliberate memory encoding, and the knowledge base effects on recall — all foundational concepts in HeurChain's Tier 1 design.
+
+### Neurophysiology of Memory — Primary Source
+
+**Carlson, N. R. (1994).** *Physiology of Behavior* (5th ed.). Allyn and Bacon.
+> The neurophysiological foundation for HeurChain's two-tier architecture. Chapter 15 provides the biological basis for working memory / reference memory distinction and hippocampal consolidation.
+
+Key passages directly informing the design:
+
+**On working vs. reference memory (Olton, 1983, as cited in Carlson):**
+> "Working memory consists of information about things that have just happened, information that is useful in the immediate future but may change from day to day. Thus, it is 'erasable' memory that is replaced on a regular basis. **Reference memory** is permanent, long-term memory, produced by consistent conditions."
+
+This is the exact distinction HeurChain encodes as Tier 1 (ops/ space, fast decay) vs Tier 2 (PostgreSQL, permanent). The terminology — working memory and reference memory — comes directly from this research.
+
+**On hippocampal context encoding (Penick and Solomon, 1991, as cited in Carlson):**
+> "Several experiments indicate that hippocampal damage does, indeed, disrupt an animal's ability to distinguish particular contexts."
+
+HeurChain's Tier 1 cues serve as **context anchors** — they preserve the episodic context of when and why information was acquired, not just the information itself.
+
+**On spatial/episodic working memory (Olton and Samuelson, 1976, as cited in Carlson):**
+> Hippocampal lesions severely impaired rats' ability to remember where they had just been, while reference memory (long-term learned locations) remained intact.
+
+This dissociation — episodic recency impaired, semantic long-term intact — is precisely why HeurChain maintains two separate stores rather than one unified vector database.
+
+**On consolidation (Figure 15.2 model):**
+> Sensory information → Short-term memory → [Consolidation] → Long-term memory, with a Rehearsal loop back to short-term memory.
+
+The consolidation arrow in Carlson's Figure 15.2 is structurally identical to HeurChain's consolidation worker: the process that moves full-context hot notes from Tier 1 (short-term/working) to Tier 2 (long-term) after the rehearsal period expires.
+
+#### Secondary citations from Carlson (Chapter 15):
+
+**Olton, D. S., & Samuelson, R. J. (1976).** "Remembrance of places passed: Spatial memory in rats." *Journal of Experimental Psychology: Animal Behavior Processes, 2*(2), 97–116.
+
+**Olton, D. S., Collison, C., & Werz, M. A. (1977).** "Spatial memory and radial arm maze performance of rats." *Learning and Motivation, 8*(3), 289–314.
+
+**Olton, D. S. (1983).** "Memory functions and the hippocampus." In W. Seifert (Ed.), *Neurobiology of the Hippocampus*. Academic Press.
+
+**Penick, S., & Solomon, P. R. (1991).** "Hippocampus, context, and conditioning." *Behavioral Neuroscience, 105*(5), 611–617.
