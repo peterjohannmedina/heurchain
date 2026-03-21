@@ -41,62 +41,63 @@ Biological memory solves all three. The hippocampus holds recent experiences in 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AGENT RUNTIME                            │
-│                                                                 │
-│   Context window loads Tier 1 at session start                  │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │              Working Memory (Tier 1)                    │   │
-│   │              Ori-HeurChain Vault                           │   │
-│   │                                                         │   │
-│   │   ops/          notes/           self/                  │   │
-│   │   ┌─────────┐   ┌─────────┐     ┌─────────┐           │   │
-│   │   │ Hot full │   │ Active  │     │Identity │           │   │
-│   │   │ context  │   │ cues +  │     │& method │           │   │
-│   │   │ 200-800t │   │ links   │     │ files   │           │   │
-│   │   │ decay:3x │   │ 5-15t   │     │decay:   │           │   │
-│   │   │          │   │ decay:1x│     │ 0.1x    │           │   │
-│   │   └────┬─────┘   └────┬────┘     └─────────┘           │   │
-│   │        │              │                                 │   │
-│   │        │    vitality < threshold                        │   │
-│   │        ▼              │                                 │   │
-│   │   ┌──────────┐        │                                 │   │
-│   │   │Consolida-│        │  ┌──────────────────────┐       │   │
-│   │   │tion      │───────►│  │ Cue: "TD600 NPT      │       │   │
-│   │   │Worker    │  cue   │  │ stainless 600 PSIG"  │       │   │
-│   │   └────┬─────┘        │  │ [[tier2:chunk_a83f]] │       │   │
-│   │        │              │  └──────────┬───────────┘       │   │
-│   │        │ full content              │ follow link        │   │
-│   └────────┼──────────────────────────-┼────────────────────┘   │
-│            │                           │                        │
-│            ▼                           ▼                        │
-│   ┌────────────────────────────────────────────────────────┐    │
-│   │                Long-Term Memory (Tier 2)               │    │
-│   │                                                        │    │
-│   │   ┌──────────────────┐    ┌──────────────────┐         │    │
-│   │   │  PostgreSQL 16   │    │     Qdrant       │         │    │
-│   │   │  chunks + BM25   │    │  vector search   │         │    │
-│   │   │  full-text search│    │  semantic embed   │         │    │
-│   │   └────────┬─────────┘    └────────┬─────────┘         │    │
-│   │            │         RRF fusion     │                   │    │
-│   │            └────────────┬───────────┘                   │    │
-│   │                         │                               │    │
-│   │                    ┌────┴────┐                          │    │
-│   │                    │Langfuse │ (trace every retrieval)  │    │
-│   │                    └─────────┘                          │    │
-│   └────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│   ┌────────────────────────────────────────────────────────┐    │
-│   │              Memory Broker (FastAPI)                    │    │
-│   │   POST /store — single write interface for all agents  │    │
-│   │   Tier routing · Consolidation timers · Graph notify   │    │
-│   └────────────────────────────────────────────────────────┘    │
-│                                                                 │
-│   ┌────────────────────────────────────────────────────────┐    │
-│   │          Phase 3: ArcadeDB Graph Overlay               │    │
-│   │   Cross-tier graph traversal · Native vector index     │    │
-│   └────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                           AGENT RUNTIME                              │
+│            (context window loads Tier 1 at session start)            │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │           TIER 1 — Working Memory (HeurChain Vault)            │  │
+│  │                                                                │  │
+│  │   ┌──────────────┐   ┌──────────────┐   ┌──────────────────┐  │  │
+│  │   │    ops/      │   │   notes/     │   │     self/        │  │  │
+│  │   │──────────────│   │──────────────│   │──────────────────│  │  │
+│  │   │ Hot full     │   │ Active cues  │   │ Identity &       │  │  │
+│  │   │ context      │   │ + wiki-links │   │ methodology      │  │  │
+│  │   │ 200–800 tok  │   │ 5–15 tokens  │   │ files            │  │  │
+│  │   │ decay: 3×    │   │ decay: 1×    │   │ decay: 0.1×      │  │  │
+│  │   └──────┬───────┘   └──────────────┘   └──────────────────┘  │  │
+│  │          │                                                     │  │
+│  │   vitality < threshold                                         │  │
+│  │          │                                                     │  │
+│  │          ▼                                                     │  │
+│  │   ┌─────────────────────┐          ┌──────────────────────┐   │  │
+│  │   │  Consolidation      │─── cue ─►│ "TD600 NPT stainless │   │  │
+│  │   │  Worker             │          │  600 PSIG drip trap" │   │  │
+│  │   │  (Compressor LLM)   │          │  [[tier2:chunk_a83f]]│   │  │
+│  │   └──────────┬──────────┘          └──────────┬───────────┘   │  │
+│  │              │ full content                    │ follow link   │  │
+│  └──────────────┼─────────────────────────────────┼───────────────┘  │
+│                 │                                 │                  │
+│                 ▼                                 ▼                  │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │              TIER 2 — Long-Term Memory                         │  │
+│  │                                                                │  │
+│  │   ┌────────────────────────┐    ┌────────────────────────┐    │  │
+│  │   │     PostgreSQL 16      │    │        Qdrant          │    │  │
+│  │   │  chunks + BM25 FTS     │◄──►│   vector embeddings    │    │  │
+│  │   │  exact keyword search  │    │   semantic similarity  │    │  │
+│  │   └───────────┬────────────┘    └────────────┬───────────┘    │  │
+│  │               │                              │                │  │
+│  │               └──────────┬───────────────────┘                │  │
+│  │                          │  RRF hybrid fusion                 │  │
+│  │                          ▼                                    │  │
+│  │                   ┌─────────────┐                             │  │
+│  │                   │  Langfuse   │  (traces every retrieval)   │  │
+│  │                   └─────────────┘                             │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                   Memory Broker  (FastAPI :3012)               │  │
+│  │    POST /store  ·  tier routing  ·  consolidation timers       │  │
+│  │    Single write interface — agents never write tiers directly  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │           Phase 3 — ArcadeDB Graph Overlay                     │  │
+│  │    Cross-tier graph traversal  ·  native vector index          │  │
+│  │    Apache 2.0  ·  Cypher + Gremlin + SQL                       │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
