@@ -40,68 +40,41 @@ Biological memory solves all three. The hippocampus holds recent experiences in 
 
 ## Architecture
 
-```
-+----------------------------------------------------------------------+
-|                          AGENT RUNTIME                               |
-|          (Tier 1 loaded into context window at session start)        |
-+----------------------------------------------------------------------+
-|                                                                      |
-|  +------------------------------------------------------------------+|
-|  |          TIER 1 -- Working Memory  (HeurChain Vault)            ||
-|  |                                                                  ||
-|  |  +------------------+  +------------------+  +-----------------+||
-|  |  |      ops/        |  |     notes/       |  |     self/       |||
-|  |  |------------------|  |------------------|  |-----------------|||
-|  |  | Hot full context |  | Active cues      |  | Identity &      |||
-|  |  | 200-800 tokens   |  | + wiki-links     |  | methodology     |||
-|  |  | decay rate: 3x   |  | 5-15 tokens      |  | decay rate: 0.1x|||
-|  |  |                  |  | decay rate: 1x   |  |                 |||
-|  |  +--------+---------+  +------------------+  +-----------------+||
-|  |           |                                                     ||
-|  |    vitality < threshold                                         ||
-|  |           |                                                     ||
-|  |           v                                                     ||
-|  |  +---------------------+       +-----------------------------+  ||
-|  |  | Consolidation Worker|--cue->| "TD600 NPT stainless        |  ||
-|  |  | (Compressor LLM)    |       |  600 PSIG drip trap"        |  ||
-|  |  |                     |       | [[tier2:chunk_a83f]]        |  ||
-|  |  +----------+----------+       +----------+------------------+  ||
-|  |             |                             |                     ||
-|  |        full content               follow link                  ||
-|  +-------------|------------------------------|--------------------+|
-|                |                             |                      |
-|                v                             v                      |
-|  +------------------------------------------------------------------+|
-|  |          TIER 2 -- Long-Term Memory                             ||
-|  |                                                                  ||
-|  |  +-------------------------+    +-------------------------+     ||
-|  |  |      PostgreSQL 16      |    |         Qdrant          |     ||
-|  |  | chunks + BM25 full-text |<-->| vector embeddings       |     ||
-|  |  | exact keyword search    |    | semantic similarity     |     ||
-|  |  +------------+------------+    +------------+------------+     ||
-|  |               |                              |                  ||
-|  |               +-------------+----------------+                  ||
-|  |                             |                                   ||
-|  |                     RRF hybrid fusion                           ||
-|  |                             |                                   ||
-|  |                             v                                   ||
-|  |                     +---------------+                           ||
-|  |                     |   Langfuse    |  traces every retrieval   ||
-|  |                     +---------------+                           ||
-|  +------------------------------------------------------------------+|
-|                                                                      |
-|  +------------------------------------------------------------------+|
-|  |              Memory Broker  (FastAPI :3012)                     ||
-|  |  POST /store . tier routing . consolidation timers              ||
-|  |  Single write interface -- agents never write tiers directly    ||
-|  +------------------------------------------------------------------+|
-|                                                                      |
-|  +------------------------------------------------------------------+|
-|  |          Phase 3 -- ArcadeDB Graph Overlay                      ||
-|  |  Cross-tier graph traversal . native vector index               ||
-|  |  Apache 2.0 . Cypher + Gremlin + SQL                            ||
-|  +------------------------------------------------------------------+|
-+----------------------------------------------------------------------+
+```mermaid
+flowchart TB
+    subgraph RUNTIME["⚙️ AGENT RUNTIME"]
+        direction TB
+
+        subgraph T1["📋 TIER 1 — Working Memory (HeurChain Vault)"]
+            direction TB
+            ops["**ops/**\nHot full context\n200–800 tokens\ndecay: 3×"]
+            notes["**notes/**\nActive cues + wiki-links\n5–15 tokens\ndecay: 1×"]
+            self["**self/**\nIdentity & methodology\ndecay: 0.1×"]
+
+            ops -->|"vitality < threshold"| CW
+            CW["**Consolidation Worker**\nCompressor LLM"]
+            CW -->|"generates cue"| cue
+            cue["📎 Cue note\n*'TD600 NPT stainless 600 PSIG'*\n&#91;&#91;tier2:chunk_a83f&#93;&#93;"]
+        end
+
+        subgraph T2["🗄️ TIER 2 — Long-Term Memory"]
+            direction LR
+            pg["**PostgreSQL 16**\nchunks + BM25 FTS\nexact keyword search"]
+            qd["**Qdrant**\nvector embeddings\nsemantic similarity"]
+            pg <-->|"RRF hybrid fusion"| qd
+            pg --> lf["**Langfuse**\ntraces every retrieval"]
+            qd --> lf
+        end
+
+        MB["**Memory Broker** *(FastAPI :3012)*\nPOST /store · tier routing · consolidation timers\nSingle write interface — agents never write tiers directly"]
+
+        ADB["**Phase 3 — ArcadeDB Graph Overlay**\nCross-tier traversal · native vector index · Apache 2.0\nCypher + Gremlin + SQL"]
+    end
+
+    CW -->|"full content"| T2
+    cue -->|"follow link"| T2
+    RUNTIME --> MB
+    MB --> ADB
 ```
 
 ---
