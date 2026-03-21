@@ -13,6 +13,7 @@ This is not RAG. RAG ingests documents once and retrieves them forever at unifor
 - [Why](#why)
 - [Architecture](#architecture)
 - [How It Works](#how-it-works)
+- [The Four Design Properties](#the-four-design-properties)
 - [Retrieval: Three Speeds](#retrieval-three-speeds)
 - [Working Memory Note Types](#working-memory-note-types)
 - [The Compressor LLM](#the-compressor-llm)
@@ -21,6 +22,7 @@ This is not RAG. RAG ingests documents once and retrieves them forever at unifor
 - [Comparison](#comparison)
 - [Implementation Stack](#implementation-stack)
 - [Status](#status)
+- [Open Problems](#open-problems)
 
 ---
 
@@ -117,6 +119,50 @@ When vitality drops below threshold, the note is a consolidation candidate. The 
 The agent's context window is populated with the full contents of Tier 1. No retrieval step, no embedding lookup, no latency. Recent experiences, active cues, and identity files are just *there* — the same way you wake up knowing who you are and what you were working on yesterday.
 
 This is the key architectural insight: **the most valuable memories are the ones you don't have to search for.**
+
+---
+
+## The Four Design Properties
+
+Most memory systems are defined by what they store and how they retrieve. HeurChain is defined by four properties that constrain how memory *behaves*. These aren't implementation details — they're design commitments.
+
+### 1. Zero-Hop Working Memory
+
+The entirety of Tier 1 loads into the agent's context window at session start. No query. No lookup. No latency. The agent wakes up knowing what it was working on, who it is, and what it has recently learned — the same way you don't have to look up your own name.
+
+This isn't an optimization. It's a constraint. Working memory is sized and pruned to *always* fit in a context window. The decay system is the enforcement mechanism for this constraint. Notes that exceed their welcome are compressed and promoted — they don't stay at the cost of crowding out everything else.
+
+**The corollary:** anything the agent needs to search for is, by definition, not in working memory. The three-speed retrieval system exists precisely because some things should be instant and some things should require effort. That asymmetry is intentional.
+
+### 2. Agent-Transparent Memory Management
+
+The agent never calls a memory management function. It doesn't say "remember this," "forget that," or "consolidate now." Memory management is infrastructure, not cognition. The consolidation worker runs in the background, watches vitality scores, and makes migration decisions without agent involvement.
+
+This matters because agents that manage their own memory have a reliability problem: they forget to remember. Every system that requires explicit `store_memory()` calls has failure modes where the agent doesn't call it — because it was rate-limited, because the context was full, because the prompt didn't emphasize it. HeurChain removes the failure mode by removing the requirement.
+
+The agent writes to the broker. The broker decides where things go. The agent reads what's in its context. Everything else happens underneath.
+
+### 3. Directory-Typed Decay as Semantic Categorization
+
+The three decay directories (`ops/`, `notes/`, `self/`) aren't just rate parameters — they're a claim about the structure of knowledge an agent holds.
+
+**Operational knowledge** (`ops/` — 3× decay) is intrinsically transient. What you debugged yesterday is less relevant next week. Aggressive decay is correct here, not a loss.
+
+**Reference knowledge** (`notes/` — 1× decay) is the background layer: established facts, domain knowledge, resolved questions. It should persist longer but eventually yield to Tier 2.
+
+**Identity** (`self/` — 0.1× decay) is near-permanent because it has to be. An agent that forgets its methodology, its owner's preferences, or its operating constraints is a different agent. The 0.1× rate means identity files effectively never consolidate under normal use.
+
+A new note type needs a rate decision before it needs a content decision. Where does it belong in the semantic taxonomy? The rate follows from that answer.
+
+### 4. Cue as Pre-Retrieval Decision Gate
+
+The cue enables something no query-based retrieval system provides: the agent can see that a memory *exists* before deciding whether to pay the retrieval cost.
+
+In standard retrieval systems, the agent fires a query into a black box and gets back results. It doesn't know what it doesn't know — there's no signal that something relevant exists before it asks. The cue inverts this. The agent sees `"TD600 NPT stainless 600 PSIG" [[tier2:chunk_a83f]]` in its working memory and makes a decision: is this relevant to what I'm doing right now? If yes, follow the link. If no, ignore it. The cue costs 5–15 tokens. The decision is free. The retrieval hop only happens if it's warranted.
+
+The cue is not a summary. Summaries communicate meaning. Cues discriminate. A good cue is one that, given the cue alone, points to exactly one memory in Tier 2. The compression task is to find the minimum discriminative representation — the shortest string of tokens that uniquely identifies this memory in the space of all stored memories.
+
+This is closer to an index key than a description.
 
 ---
 
@@ -292,9 +338,53 @@ The architecture is stable. The interfaces are stable. Individual components can
 
 ---
 
+## Open Problems
+
+These are the known hard problems in the current implementation. They're open because the right answer isn't obvious, not because they've been neglected.
+
+### Cue Quality is the Bottleneck
+
+The system's retrieval quality is bounded by the quality of its cues. A bad cue is worse than no cue: it occupies context tokens in working memory pointing at something that won't match at retrieval time. The compression prompt produces cues of variable quality across note types — technical content (product codes, IDs, specific terms) cues well; conceptual content (decisions, reasoning, preferences) cues poorly.
+
+Current approach: evaluation harnesses measuring cue discriminativeness against the Tier 2 corpus.
+
+Unknown: whether a larger compressor model produces substantially better cues for conceptual content, or whether the problem is inherent to the compression format.
+
+### Decay Rates Need Domain Calibration
+
+The baseline rates (3×, 1×, 0.1×) were chosen empirically for a specific deployment context — long-running, multi-day projects with a single primary agent. Different contexts need different rates.
+
+An agent handling one-off questions should have much faster `ops/` decay. An agent deep in a month-long project should have slower decay so context from last week stays hot. The current system has static rates; the right system adapts them to task structure.
+
+One direction: the Memory Broker tracks access patterns across sessions and adjusts decay rates per directory based on observed dwell time vs. access frequency.
+
+### Consolidation Doesn't Merge
+
+When five notes about the same subject consolidate over five days, they produce five separate Tier 2 chunks. Deep retrieval finds all five and returns them, but they're not organized as a unified record. Over time, Tier 2 accumulates fragmented coverage of the same topics from different temporal perspectives.
+
+The consolidation worker should detect when a note being consolidated is semantically close to existing Tier 2 content and merge rather than insert — updating an existing record rather than creating a new one. This requires a pre-consolidation similarity check: query Tier 2 for neighbors above a cosine threshold and let the compressor LLM decide whether to merge or create.
+
+### No Cross-Note Synthesis
+
+The current consolidation model is one-to-one: one hot note becomes one Tier 2 chunk plus one cue. There's no mechanism for the system to notice patterns *across* notes and synthesize higher-order knowledge.
+
+Example: after three weeks of interaction, there may be 40 `ops/` notes revealing that the agent's owner works on infrastructure late on weeknights, prefers terse responses after 10pm, and escalates urgency when mentioning "prod." None of these individual notes is worth preserving past consolidation. But the *pattern* across them — a behavioral model of the user — is extremely valuable and should live in `self/` permanently.
+
+A synthesis pass — running periodically across a batch of candidates before they consolidate — could extract these higher-order patterns. The compressor LLM prompt would shift: instead of "compress this note into a cue," it becomes "what do these N notes reveal about the user's preferences or patterns?"
+
+### Relevance-Weighted Decay
+
+Current decay is purely temporal and access-based. A note decays at its directory rate unless it's read. But an `ops/` note about database configuration is more relevant when the agent is currently working on a database problem than when it's doing creative writing. Relevance to current context should slow decay.
+
+One approach: the broker tracks the agent's recent query embeddings via the Langfuse retrieval trace. When computing vitality, the decay rate is multiplied by `(1 - relevance_to_current_context)`. Notes relevant to current work decay slower. Notes from a completed task decay at full speed.
+
+This requires the broker to have a model of "what the agent is currently doing" — derivable from the last N queries or from an explicit current-task marker in `self/`.
+
+---
+
 ## Contributing
 
-This is an active research project within the [OpenClaw](https://github.com/openclaw) ecosystem. If you're building agent memory systems and this resonates, open an issue. We're particularly interested in:
+This is an independent research project developed on top of the [OpenClaw](https://github.com/openclaw) agent infrastructure. It is not an official OpenClaw project. If you're building agent memory systems and this resonates, open an issue. Particularly interested in:
 
 - Alternative decay models (beyond ACT-R)
 - Cue quality evaluation methods
@@ -307,9 +397,6 @@ This is an active research project within the [OpenClaw](https://github.com/open
 
 MIT
 
----
-
-*Built by the [OpenClaw](https://openclaw.ai) team. Agents deserve to remember.*
 
 ---
 
