@@ -5,6 +5,49 @@ Edit this file with each commit — one entry per commit, newest at top.
 
 ---
 
+## 147ed2d — feat(ansible): wire second-brain MCP to shared system Redis (HeurChain)
+
+**Date:** 2026-05-01  
+**Context:** Second-brain MCP and HeurChain broker were both running on CT 203 but using separate Redis instances — the MCP had its own Docker sidecar (17 keys), HeurChain used the system Redis (463 keys, the full document store). `cache_get`/`cache_set` calls through the MCP were blind to everything HeurChain had stored.
+
+### What changed
+
+**Dropped the Docker Redis sidecar entirely.**  
+Removed the `redis` service, `redis-data` volume, and `depends_on` redis condition from `docker-compose.yml.j2`. The MCP now connects to the system Redis via `host.docker.internal`.
+
+**Added `extra_hosts: host.docker.internal:host-gateway`** to the `obsidian-mcp` service so the container can resolve the host via Docker's built-in `host-gateway` special value.
+
+**Changed `REDIS_URL`** from `redis://redis:6379` (Docker sidecar) to `redis://host.docker.internal:6379` (system Redis). Host-gateway resolved to `172.17.0.1` (the default `docker0` bridge IP).
+
+**System Redis config changes** (applied directly on CT 203, not via Ansible — document here for reproducibility):
+
+| Setting | Before | After | Reason |
+|---------|--------|-------|--------|
+| `bind` | `127.0.0.1 -::1` | `127.0.0.1 -::1 172.19.0.1 172.17.0.1` | Allow connections from compose network gateway and docker0 bridge |
+| `protected-mode` | `yes` | `no` | Protected mode blocks all non-loopback connections when no password is set |
+
+> **Note:** `172.19.0.1` is the `second-brain-mcp_default` compose network gateway. `172.17.0.1` is the default `docker0` bridge (what `host-gateway` resolves to). Both were needed because `host-gateway` did not resolve to the compose network gateway as expected.
+
+**Replaced Redis health check task** — `docker exec redis-cache redis-cli ping` → `redis-cli ping` directly on the host (no container needed).
+
+### Verification
+
+```
+docker exec obsidian-mcp node -e "... r.keys('*') ..."
+→ total: 463
+```
+
+MCP container now sees all 463 system Redis keys, including all HeurChain `doc:*` entries, `tags:*`, `namespaces:*`, etc. `cache_get` and `obsidian_search_notes` operate on the unified keyspace.
+
+### State after this commit
+
+- `obsidian-mcp` → system Redis (`127.0.0.1:6379` via `host.docker.internal`)
+- HeurChain broker → same system Redis (unchanged)
+- Docker Redis sidecar: removed. `obsidian-mcp-enhanced_redis-data` volume still on disk (backup).
+- Both services also share `/opt/obsidian-vault` on the filesystem.
+
+---
+
 ## e98cb85 — fix(ansible): CT 203 deploy fixes — compose binary, AppArmor, Redis port
 
 **Date:** 2026-05-01  
