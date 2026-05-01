@@ -1,0 +1,16 @@
+{
+  "name": "obsidian-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "redis": "^5.0.0",
+    "cors": "^2.8.5",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.25.0"
+  }
+}

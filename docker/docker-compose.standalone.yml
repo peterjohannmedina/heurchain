@@ -1,0 +1,91 @@
+name: "memory-stack"
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: memory-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  heurchain:
+    build:
+      context: .
+      dockerfile: Dockerfile.heurchain
+    image: memory-heurchain
+    container_name: memory-heurchain
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MEMORY_BROKER_PORT=${HEURCHAIN_PORT:-3012}
+      - OBSIDIAN_VAULT_PATH=/obsidian-vault
+      - ORI_VAULT_PATH=/ori-vault
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - BROKER_URL=http://localhost:${HEURCHAIN_PORT:-3012}
+    volumes:
+      - "${OBSIDIAN_VAULT_PATH:-./data/obsidian-vault}:/obsidian-vault"
+      - "${ORI_VAULT_PATH:-./data/ori-vault}:/ori-vault"
+    ports:
+      - "${HEURCHAIN_PORT:-3012}:3012"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:3012/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  obsidian-mcp:
+    image: node:22-slim
+    container_name: memory-mcp
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      heurchain:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - MCP_PORT=${MCP_PORT:-3010}
+      - OBSIDIAN_VAULT_PATH=/obsidian-vault
+      - HEURCHAIN_URL=http://heurchain:${HEURCHAIN_PORT:-3012}
+      - GRAFANA_USER=${GRAFANA_USER:-admin}
+      - GRAFANA_PASSWORD=${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - "./mcp-app:/app"
+      - "${OBSIDIAN_VAULT_PATH:-./data/obsidian-vault}:/obsidian-vault"
+    working_dir: /app
+    command: bash -c "npm install --omit=dev --silent 2>/dev/null && node server.js"
+    ports:
+      - "${MCP_PORT:-3010}:${MCP_PORT:-3010}"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"const h=require('http');h.get('http://localhost:3010/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: memory-nginx
+    restart: unless-stopped
+    depends_on:
+      - obsidian-mcp
+    volumes:
+      - "./nginx.conf:/etc/nginx/nginx.conf:ro"
+    ports:
+      - "${NGINX_PORT:-80}:80"
+
+volumes:
+  redis-data:

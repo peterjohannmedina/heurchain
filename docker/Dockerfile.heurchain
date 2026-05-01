@@ -1,0 +1,18 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY heurchain/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY heurchain/main.py heurchain/reseed.py heurchain/consolidation_worker.py ./
+
+ENV REDIS_HOST=redis \
+    REDIS_PORT=6379 \
+    MEMORY_BROKER_PORT=3012 \
+    OBSIDIAN_VAULT_PATH=/obsidian-vault \
+    ORI_VAULT_PATH=/ori-vault
+
+EXPOSE 3012
+
+CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3012"]
