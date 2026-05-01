@@ -1,15 +1,15 @@
 ---
 - name: Deploy Second-Brain MCP Infrastructure on CT 203
   hosts: ct203
-  gather_facts: yes
+  gather_facts: true
   become: yes
 
   pre_tasks:
     - name: Verify target is accessible
-      ping:
+      ansible.builtin.ping:
 
     - name: Display target info
-      debug:
+      ansible.builtin.debug:
         msg: "Deploying to {{ ansible_hostname }} ({{ ct_ip }})"
 
   roles:
@@ -21,7 +21,7 @@
 
   post_tasks:
     - name: Display deployment summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=========================================="
           - "Second-Brain MCP Deployment Complete!"

@@ -1,6 +1,6 @@
 ---
 - name: Create monitoring directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: "0755"
@@ -10,62 +10,62 @@
     - /opt/monitoring/grafana/provisioning/datasources
 
 - name: Deploy Prometheus configuration
-  template:
+  ansible.builtin.template:
     src: prometheus.yml.j2
     dest: /opt/monitoring/prometheus/prometheus.yml
     mode: "0644"
 
 - name: Deploy Grafana datasource
-  template:
+  ansible.builtin.template:
     src: grafana-datasource.yml.j2
     dest: /opt/monitoring/grafana/provisioning/datasources/prometheus.yml
     mode: "0644"
 
 - name: Check Prometheus network
-  shell: docker inspect prometheus --format '{{ '{{' }}json .NetworkSettings.Networks{{ '}}' }}' 2>/dev/null || echo '{}'
+  ansible.builtin.shell: docker inspect prometheus --format '{{ '{{' }}json .NetworkSettings.Networks{{ '}}' }}' 2>/dev/null || echo '{}'
   register: prom_network
   changed_when: false
 
 - name: Remove Prometheus on wrong network
-  shell: docker rm -f prometheus
-  when: prom_network.stdout != '{}' and 'second-brain-mcp_default' not in prom_network.stdout
+  ansible.builtin.shell: docker rm -f prometheus
+  when: prom_network.stdout != '{}' and '{{ mcp_network_name }}_default' not in prom_network.stdout
 
 - name: Check if Prometheus container exists
-  shell: docker ps -a --filter name=^prometheus$ --format '{{ '{{' }}.Names{{ '}}' }}'
+  ansible.builtin.shell: docker ps -a --filter name=^prometheus$ --format '{{ '{{' }}.Names{{ '}}' }}'
   register: prom_exists
   changed_when: false
 
 - name: Start Prometheus container
-  shell: >
+  ansible.builtin.shell: >
     docker run -d
     --name prometheus
     --restart unless-stopped
-    --network second-brain-mcp_default
+    --network {{ mcp_network_name }}_default
     -p {{ prometheus_port }}:9090
     -v /opt/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     prom/prometheus:{{ prometheus_version }}
   when: prom_exists.stdout == ""
 
 - name: Check Grafana network
-  shell: docker inspect grafana --format '{{ '{{' }}json .NetworkSettings.Networks{{ '}}' }}' 2>/dev/null || echo '{}'
+  ansible.builtin.shell: docker inspect grafana --format '{{ '{{' }}json .NetworkSettings.Networks{{ '}}' }}' 2>/dev/null || echo '{}'
   register: grafana_network
   changed_when: false
 
 - name: Remove Grafana on wrong network
-  shell: docker rm -f grafana
-  when: grafana_network.stdout != '{}' and 'second-brain-mcp_default' not in grafana_network.stdout
+  ansible.builtin.shell: docker rm -f grafana
+  when: grafana_network.stdout != '{}' and '{{ mcp_network_name }}_default' not in grafana_network.stdout
 
 - name: Check if Grafana container exists
-  shell: docker ps -a --filter name=^grafana$ --format '{{ '{{' }}.Names{{ '}}' }}'
+  ansible.builtin.shell: docker ps -a --filter name=^grafana$ --format '{{ '{{' }}.Names{{ '}}' }}'
   register: grafana_exists
   changed_when: false
 
 - name: Start Grafana container
-  shell: >
+  ansible.builtin.shell: >
     docker run -d
     --name grafana
     --restart unless-stopped
-    --network second-brain-mcp_default
+    --network {{ mcp_network_name }}_default
     -p {{ grafana_port }}:3000
     -e GF_SECURITY_ADMIN_PASSWORD={{ grafana_password }}
     -v /opt/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
@@ -73,7 +73,7 @@
   when: grafana_exists.stdout == ""
 
 - name: Wait for Prometheus
-  uri:
+  ansible.builtin.uri:
     url: "http://localhost:{{ prometheus_port }}/-/healthy"
     status_code: 200
   register: prom_health
@@ -83,7 +83,7 @@
   ignore_errors: yes
 
 - name: Wait for Grafana
-  uri:
+  ansible.builtin.uri:
     url: "http://localhost:{{ grafana_port }}/api/health"
     status_code: 200
   register: grafana_health
@@ -93,7 +93,7 @@
   ignore_errors: yes
 
 - name: Display monitoring status
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Prometheus: {{ 'healthy' if (prom_health.status | default(0)) == 200 else 'starting...' }}"
       - "Grafana: {{ 'healthy' if (grafana_health.status | default(0)) == 200 else 'starting...' }}"

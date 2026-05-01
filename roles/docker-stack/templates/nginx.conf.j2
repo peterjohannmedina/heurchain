@@ -1,13 +1,16 @@
 worker_processes 1;
 master_process off;
-events { worker_connections 512; }
+error_log /dev/stderr;
+events { worker_connections 1024; }
 
 http {
+    access_log /dev/stdout;
     resolver 127.0.0.11 valid=30s;
 
     server {
         listen 80;
         server_name _;
+        client_max_body_size 10m;
 
         location /health {
             proxy_pass http://obsidian-mcp:{{ mcp_port }}/health;

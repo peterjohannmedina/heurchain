@@ -11,13 +11,14 @@ const app = express();
 app.use(cors());
 
 const redis = createClient({ url: process.env.REDIS_URL || "redis://localhost:6379" });
-redis.on("error", (err) => console.log("Redis error:", err));
+redis.on("error", (err) => console.error("Redis error:", err));
 
 const OBSIDIAN_VAULT_PATH = process.env.OBSIDIAN_VAULT_PATH || "/opt/obsidian-vault";
 
 (async () => {
   await redis.connect();
-  console.log("Connected to Redis");
+  const port = parseInt(process.env.MCP_PORT, 10) || {{ mcp_port }};
+  app.listen(port, () => console.log("MCP server listening on port " + port));
 })();
 
 // ---------------------------------------------------------------------------
@@ -575,5 +576,3 @@ app.get("/api/obsidian/search", async (req, res) => {
   });
 });
 
-const port = process.env.MCP_PORT || {{ mcp_port }};
-app.listen(port, () => console.log("MCP server listening on port " + port));

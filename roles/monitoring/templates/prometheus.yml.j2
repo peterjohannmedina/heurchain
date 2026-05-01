@@ -4,15 +4,14 @@ global:
 
 scrape_configs:
   - job_name: "mcp-server"
-    metrics_path: "/health"
     static_configs:
-      - targets: ["{{ ct_ip }}:{{ mcp_port }}"]
+      - targets: ["obsidian-mcp:{{ mcp_port }}"]
         labels:
           service: "obsidian-mcp"
 
   - job_name: "nginx"
     static_configs:
-      - targets: ["{{ ct_ip }}:{{ nginx_port }}"]
+      - targets: ["nginx-gateway:80"]
         labels:
           service: "nginx-gateway"
 

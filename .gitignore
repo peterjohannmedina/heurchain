@@ -1,5 +1,7 @@
-﻿# Sensitive credentials
+# Sensitive credentials
 inventory.yml
+vars/secrets.yml
+.vault_pass
 
 # IDE settings
 .claude/
@@ -7,6 +9,7 @@ inventory.yml
 
 # Generated artifacts
 ARTIFACTS_README.md
+*.retry
 
 # Local install scripts (contain environment-specific paths)
 *.sh
