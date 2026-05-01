@@ -1,0 +1,361 @@
+{
+  "$schema": "heurchain-agent-config/2.0",
+  "package": "HeurChain",
+  "version": "2.0.0",
+  "purpose": "Self-configuration manifest. An AI agent reads this file once at session start to understand how to use HeurChain for persistent memory, knowledge retrieval, and session continuity. Follow the session_protocol section in order.",
+
+  "deployment": {
+    "broker_url": "http://192.168.1.203:3012",
+    "mcp_gateway": "http://192.168.1.203:80",
+    "mcp_sse_endpoint": "http://192.168.1.203:80/sse",
+    "health_endpoint": "http://192.168.1.203:3012/health",
+    "note": "All endpoints require no authentication. Replace 192.168.1.203 with your deployment host if different."
+  },
+
+  "interface_selection": {
+    "description": "Choose exactly one interface based on your client type. Do not mix both in the same agent.",
+    "use_mcp_if": [
+      "You are Claude Code or any MCP-compatible SSE client",
+      "You can establish a persistent SSE connection to the gateway"
+    ],
+    "use_http_if": [
+      "You are OpenClaw, Hermes, or any agent making direct HTTP calls",
+      "You are ChatGPT or a GPT Action using the REST API",
+      "You cannot maintain an SSE connection"
+    ],
+    "mcp": {
+      "transport": "SSE",
+      "connect_to": "http://192.168.1.203:80/sse",
+      "preferred_search_tool": "heurchain_search",
+      "note": "heurchain_search uses BM25 ranking over 460+ keys. Prefer it over obsidian_search_notes for knowledge base queries."
+    },
+    "http": {
+      "base_url": "http://192.168.1.203:3012",
+      "content_type": "application/json",
+      "method": "Use standard HTTP GET/POST. No auth headers required."
+    }
+  },
+
+  "session_protocol": {
+    "description": "Every agent interaction is a session. Sessions enable context continuity across restarts. Always follow this sequence.",
+    "startup_sequence": [
+      {
+        "step": 1,
+        "action": "start_session",
+        "why": "Creates a session_id that namespaces all your working memory. Without this, your memory keys will collide with other agents.",
+        "request": {
+          "method": "POST",
+          "path": "/session/start",
+          "body": {
+            "agent_name": "{your_agent_name}",
+            "metadata": {
+              "task": "{brief description of what you are doing}",
+              "client": "{your client type, e.g. claude-code, openclaw, hermes}"
+            }
+          }
+        },
+        "response_fields": {
+          "session_id": "Store this. Pass it to every /agent/store call.",
+          "started_at": "ISO8601 timestamp"
+        }
+      },
+      {
+        "step": 2,
+        "action": "recall_prior_context",
+        "why": "Restores what you knew from prior sessions. If you are a returning agent, this brings back your persistent knowledge and the last session's working memory.",
+        "request": {
+          "method": "GET",
+          "path": "/agent/{your_agent_name}/recall"
+        },
+        "response_interpretation": {
+          "session_id_null": "You are a new agent with no prior sessions. Proceed without context.",
+          "working_empty_longterm_populated": "You have persistent knowledge but the working tier was cleared. Review longterm entries.",
+          "both_populated": "Full context restore. Treat working[] as recent scratch notes, longterm[] as your durable knowledge base."
+        }
+      },
+      {
+        "step": 3,
+        "action": "check_health",
+        "why": "Verify all storage backends are available before starting work.",
+        "request": {
+          "method": "GET",
+          "path": "/health"
+        },
+        "abort_if": "status is not 'ok' or backends.redis.status is not 'connected'"
+      }
+    ],
+    "shutdown_sequence": [
+      {
+        "step": 1,
+        "action": "persist_important_findings",
+        "why": "Working-tier memory is not permanent. Anything you want in the next session must be explicitly persisted.",
+        "how": "Call POST /agent/store with persist=true for any key facts, conclusions, or artifacts produced this session."
+      },
+      {
+        "step": 2,
+        "action": "end_session",
+        "why": "Marks the session as ended and attaches a summary. The summary is searchable in future sessions.",
+        "request": {
+          "method": "POST",
+          "path": "/session/end",
+          "body": {
+            "session_id": "{session_id from startup}",
+            "summary": "{1-3 sentence summary of what was accomplished and what to pick up next time}"
+          }
+        }
+      }
+    ]
+  },
+
+  "key_schema": {
+    "description": "HeurChain uses a colon-separated key namespace. Keys determine which storage tier is used (via 'auto' tier routing). Always namespace your agent-specific keys with your agent_name to prevent collisions.",
+    "patterns": {
+      "agent_session_working":  "memory:agent:{agent_name}:{session_id}:{descriptor}",
+      "agent_persistent":       "doc:agent:{agent_name}:{descriptor}",
+      "shared_knowledge":       "doc:{domain}:{topic}",
+      "shared_working":         "memory:{topic}:{descriptor}",
+      "session_metadata":       "session:{session_id}",
+      "agent_session_registry": "agent:{agent_name}:sessions"
+    },
+    "examples": {
+      "agent_session_working":  "memory:agent:claude-code:claude-code-20260501T184608Z-7507bae9:task_notes",
+      "agent_persistent":       "doc:agent:hermes:embedding_strategy",
+      "shared_knowledge":       "doc:proxmox:cluster-status",
+      "shared_working":         "memory:openclaw:active_conversation"
+    },
+    "auto_tier_routing": {
+      "rule": "When tier='auto', the prefix determines the tier.",
+      "memory_prefix": "working tier (Ori vault markdown)",
+      "doc_prefix": "longterm tier (Redis + Obsidian vault mirror)",
+      "knowledge_prefix": "longterm tier",
+      "session_prefix": "longterm tier",
+      "everything_else": "longterm tier (default)"
+    },
+    "collision_prevention": "Always include your agent_name in keys you own. Never write to doc:agent:{other_agent_name}:* keys. Shared keys (doc:proxmox:*, knowledge:*) are readable by all agents but write with care — coordinate with other agents before overwriting shared knowledge."
+  },
+
+  "operations": {
+    "store_working_memory": {
+      "description": "Store a temporary note scoped to your current session. Cleared when Ori vault is pruned by the consolidation worker (default: 7 days).",
+      "method": "POST",
+      "path": "/agent/store",
+      "body": {
+        "agent_name": "{your_agent_name}",
+        "session_id": "{session_id}",
+        "key": "{short_descriptor}",
+        "content": "{markdown content}",
+        "tags": ["optional", "tags"],
+        "persist": false
+      },
+      "resulting_key": "memory:agent:{agent_name}:{session_id}:{key}",
+      "use_for": ["in-progress task notes", "intermediate results", "scratch calculations", "conversation context"]
+    },
+    "store_persistent_memory": {
+      "description": "Store something that must survive session end. Writes to both working tier AND longterm Redis.",
+      "method": "POST",
+      "path": "/agent/store",
+      "body": {
+        "agent_name": "{your_agent_name}",
+        "session_id": "{session_id}",
+        "key": "{descriptor}",
+        "content": "{markdown content}",
+        "persist": true
+      },
+      "resulting_keys": {
+        "working": "memory:agent:{agent_name}:{session_id}:{key}",
+        "longterm": "doc:agent:{agent_name}:{key}"
+      },
+      "use_for": ["key findings", "decisions made", "artifacts produced", "facts learned that apply to future sessions"]
+    },
+    "store_shared_knowledge": {
+      "description": "Write to the shared knowledge base. All agents can read this. Use for infrastructure docs, system state, runbooks.",
+      "method": "POST",
+      "path": "/store",
+      "body": {
+        "key": "doc:{domain}:{topic}",
+        "content": "{markdown content}",
+        "tags": ["optional"],
+        "tier": "longterm",
+        "source": "{your_agent_name}"
+      }
+    },
+    "search": {
+      "description": "BM25 ranked search across all indexed documents (460+ Redis keys + Ori vault files). Use this before answering any question that may already be in the knowledge base.",
+      "method": "GET",
+      "path": "/search",
+      "params": {
+        "q": "your natural language query",
+        "limit": "10 (default) — increase to 25-50 for broad queries",
+        "tier": "all | longterm | working (default: all)"
+      },
+      "response_fields": {
+        "key": "storage key",
+        "score": "BM25 relevance score (higher = more relevant)",
+        "content": "full document content",
+        "tier": "longterm or working",
+        "updated_at": "ISO8601 last-write timestamp"
+      },
+      "guidance": "Score > 2.0 is a strong match. Score < 0.5 is likely noise. If no results, try shorter query terms or fewer words."
+    },
+    "get_by_key": {
+      "description": "Retrieve a specific document by exact key. Returns the most recently written copy if the key exists in both tiers.",
+      "method": "GET",
+      "path": "/get",
+      "params": {
+        "key": "exact key string",
+        "tier": "all | longterm | working (default: all)"
+      }
+    },
+    "recall_session": {
+      "description": "Restore the full context of a previous session. Use at startup (step 2 above). Can also be called mid-session to restore a specific earlier session.",
+      "method": "GET",
+      "path": "/agent/{agent_name}/recall",
+      "optional_params": {
+        "session_id": "Omit to get most recent session. Provide to restore a specific session."
+      },
+      "response_fields": {
+        "session_id": "The session being restored",
+        "agent_name": "Confirmed agent name",
+        "session_meta": "Session metadata including summary if set",
+        "working": "Array of working-tier entries from this session",
+        "longterm": "Array of longterm entries for this agent"
+      }
+    },
+    "list_sessions": {
+      "description": "List all past sessions for your agent, newest first. Useful for reviewing session history.",
+      "method": "GET",
+      "path": "/agent/{agent_name}/sessions"
+    },
+    "get_session_context": {
+      "description": "Get full memory for a specific session by ID.",
+      "method": "GET",
+      "path": "/session/{session_id}/context"
+    },
+    "promote_to_longterm": {
+      "description": "Explicitly promote a working-tier entry to longterm Redis. Useful when you decide mid-session that a scratch note should be permanent.",
+      "method": "POST",
+      "path": "/promote",
+      "params": {
+        "key": "exact working-tier key to promote",
+        "new_key": "(optional) rename the key in longterm"
+      }
+    }
+  },
+
+  "mcp_tools": {
+    "description": "If using the MCP interface, these are the available tools. Prefer heurchain_search over obsidian_search_notes — it uses BM25 ranking over the full Redis keyspace.",
+    "memory": {
+      "cache_set": "Write a key-value pair directly to Redis. No tier routing. For simple ephemeral cache entries.",
+      "cache_get": "Read a Redis key directly.",
+      "cache_delete": "Delete a Redis key."
+    },
+    "search": {
+      "heurchain_search": "BM25 ranked search via the broker. Params: query, limit (default 10), tier (all/longterm/working). PREFERRED for knowledge base queries.",
+      "obsidian_search_notes": "Naive substring search across vault markdown files. Use only as fallback."
+    },
+    "vault": {
+      "obsidian_write_note": "Write a markdown note to the Obsidian vault. Params: key, content, metadata.",
+      "obsidian_read_note": "Read a vault note by key.",
+      "obsidian_delete_note": "Delete a vault note.",
+      "obsidian_list_notes": "List vault notes, optionally filtered by prefix."
+    },
+    "health": {
+      "health_check": "Returns status of Redis, Ori vault, and Obsidian vault backends."
+    }
+  },
+
+  "behavioral_guidance": {
+    "description": "Decision rules for when and what to store. Follow these to be a well-behaved HeurChain agent.",
+    "rules": [
+      {
+        "trigger": "At session start, always",
+        "action": "Run the 3-step startup_sequence. Never skip /agent/recall — you may be returning to an in-progress task.",
+        "priority": "mandatory"
+      },
+      {
+        "trigger": "Before answering any question about the infrastructure, codebase, or domain",
+        "action": "Call /search?q={topic} first. If score > 1.5, use that context in your answer. Do not hallucinate facts that may already be in the knowledge base.",
+        "priority": "mandatory"
+      },
+      {
+        "trigger": "You learn a fact that is broadly reusable (IP address, architecture decision, system state)",
+        "action": "Store to doc:{domain}:{topic} with tier=longterm. Tag with source={your_agent_name}.",
+        "priority": "recommended"
+      },
+      {
+        "trigger": "You are mid-task and produce an intermediate result or plan",
+        "action": "Store to working memory via /agent/store with persist=false. This lets you resume if interrupted.",
+        "priority": "recommended"
+      },
+      {
+        "trigger": "Task is complete and you produced a deliverable (code, config, document)",
+        "action": "Store the outcome with persist=true before session end so the next session can see it.",
+        "priority": "recommended"
+      },
+      {
+        "trigger": "At session end, always",
+        "action": "Call /session/end with a summary. Even one sentence. This summary is searchable in future sessions.",
+        "priority": "mandatory"
+      },
+      {
+        "trigger": "You are about to write a key that already exists",
+        "action": "Call /get first. If the existing content is newer or more accurate, merge or append rather than overwrite.",
+        "priority": "recommended"
+      },
+      {
+        "trigger": "Your task is specific to your agent and should not be visible to other agents",
+        "action": "Use doc:agent:{your_name}:{key} or memory:agent:{your_name}:{session_id}:{key} patterns exclusively.",
+        "priority": "mandatory"
+      }
+    ],
+    "agent_naming": {
+      "description": "Choose a stable, unique agent_name. This name persists across all your sessions.",
+      "convention": "Use lowercase hyphen-separated identifiers that reflect your role.",
+      "examples": {
+        "claude-code": "Claude Code running in a developer session",
+        "openclaw-agent": "An OpenClaw framework agent",
+        "hermes": "The Hermes/Ori-Mnemos embedding agent on VM 104",
+        "chatgpt-actions": "ChatGPT GPT Actions integration"
+      },
+      "warning": "Two agents with the same name share session history. Only use the same name if you intend continuity (e.g., always 'claude-code' for all Claude Code sessions)."
+    }
+  },
+
+  "tier_reference": {
+    "working": {
+      "storage": "Ori vault (markdown files with YAML frontmatter)",
+      "path": "/mnt/pvet630/openclaw/ori-vault/notes/ (Ansible) or ./data/ori-vault/notes/ (Docker)",
+      "persistence": "7 days default (consolidation_worker promotes aged notes to longterm automatically)",
+      "indexed_by": "Keyword search (Ori vault scan), not BM25",
+      "best_for": "Session-scoped scratch space, in-progress notes, short-lived context"
+    },
+    "longterm": {
+      "storage": "Redis keyspace + Obsidian vault markdown mirror",
+      "persistence": "Indefinite (no TTL unless you set one explicitly with /store + redis TTL)",
+      "indexed_by": "BM25 in-memory index (rebuilt on startup, updated on every /store)",
+      "best_for": "Durable knowledge base, reference documents, agent learning"
+    }
+  },
+
+  "error_handling": {
+    "404_on_recall": "No prior sessions exist for this agent. Proceed as a new agent without prior context.",
+    "health_degraded": "If ori_vault or obsidian backend is unavailable, longterm Redis still works. Working-tier writes will fail — use tier='longterm' explicitly until resolved.",
+    "search_empty": "No BM25 results means the query tokens do not appear in any indexed document. Try broader terms or check /health to confirm Redis is connected.",
+    "session_not_found": "session_id is invalid or expired. Start a new session. Prior working memory for that session may be unrecoverable.",
+    "500_on_store": "Check /health. Most 500s on /store are Redis connectivity failures or Ori vault path permission errors."
+  },
+
+  "quick_reference": {
+    "start_session":        "POST /session/start          {agent_name, metadata}",
+    "recall_context":       "GET  /agent/{name}/recall",
+    "store_working":        "POST /agent/store            {agent_name, session_id, key, content, persist:false}",
+    "store_persistent":     "POST /agent/store            {agent_name, session_id, key, content, persist:true}",
+    "search_knowledge":     "GET  /search?q=&limit=&tier=",
+    "get_by_key":           "GET  /get?key=",
+    "end_session":          "POST /session/end            {session_id, summary}",
+    "list_sessions":        "GET  /agent/{name}/sessions",
+    "restore_old_session":  "GET  /agent/{name}/recall?session_id=",
+    "promote_to_longterm":  "POST /promote?key=",
+    "health":               "GET  /health"
+  }
+}

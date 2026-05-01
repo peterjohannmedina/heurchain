@@ -6,6 +6,11 @@
   "scripts": {
     "start": "node server.js"
   },
+  "author": "Peter Medina <peter@carlssoncreative.com>",
+  "files": [
+    "server.js",
+    "AGENT_CONFIG.json"
+  ],
   "keywords": [
     "mcp",
     "heurchain",
