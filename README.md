@@ -26,97 +26,13 @@ HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kim
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    subgraph AGENTS ["Any AI Agent — One Shared Memory System"]
-        MCP_CLIENT["Claude Code · Kimi\nAny MCP SSE client"]
-        REST_CLIENT["OpenClaw · Hermes · ChatGPT\nAny HTTP client"]
-    end
-
-    subgraph IFACE ["Interface Layer"]
-        NGINX["nginx :80\nSSE reverse proxy\nGateway entry point"]
-        MCP_SRV["heurchain-mcp :3010\n26 MCP tools\nSSE transport"]
-    end
-
-    subgraph BROKER ["HeurChain Broker :3012  ·  FastAPI"]
-        SM["Session Manager\nPOST /session/start\nagent_name + session_id\nauto-namespacing"]
-        TR["Tier Router\nclassify_tier(key prefix)\nmemory:* → working\ndoc: · knowledge:* → longterm"]
-        BM25["BM25 Index\nin-memory · rebuilt on startup\nupdated on every write\n460+ keys indexed"]
-    end
-
-    subgraph STORAGE ["Storage Layer"]
-        ORI["Ori Vault  ·  Working Tier\nMarkdown + YAML frontmatter\nmemory:agent:{name}:{sid}:{key}\n7-day consolidation → auto-promotes to Redis"]
-        REDIS[("Redis  ·  Longterm Tier\ndoc: · knowledge:\nsession: · agent:\nPersistent · no TTL by default")]
-        OBS["Obsidian Vault\nMarkdown mirror\nauto-written on every\nlongterm store"]
-    end
-
-    MCP_CLIENT -->|"MCP SSE"| NGINX
-    REST_CLIENT -->|"HTTP REST  ·  no auth"| BROKER
-
-    NGINX --> MCP_SRV
-    MCP_SRV -->|"heurchain_search · cache_get/set\nobsidian_read/write"| BROKER
-
-    BROKER --> SM
-    SM --> TR
-    BROKER <-->|"score · index"| BM25
-
-    TR -->|"memory: prefix"| ORI
-    TR -->|"doc: · knowledge:\nsession: · default"| REDIS
-    REDIS -->|"auto-mirror on write"| OBS
-
-    BM25 <-->|"SCAN on startup · update on write"| REDIS
-    BM25 <-->|"glob *.md"| ORI
-    ORI -->|"consolidation worker  ·  7 days"| REDIS
-```
+<img src="https://mermaid.ink/img/Zmxvd2NoYXJ0IFRECiAgICBzdWJncmFwaCBBR0VOVFMgWyJBbnkgQUkgQWdlbnQiXQogICAgICAgIEExWyJDbGF1ZGUgQ29kZSAvIEtpbWkKTUNQIFNTRSBjbGllbnQiXQogICAgICAgIEEyWyJPcGVuQ2xhdyAvIEhlcm1lcyAvIENoYXRHUFQKSFRUUCBjbGllbnQiXQogICAgZW5kCiAgICBzdWJncmFwaCBJRkFDRSBbIkludGVyZmFjZSBMYXllciJdCiAgICAgICAgTlsibmdpbnggOjgwClNTRSBnYXRld2F5Il0KICAgICAgICBNWyJoZXVyY2hhaW4tbWNwIDozMDEwCjI2IE1DUCB0b29scyJdCiAgICBlbmQKICAgIHN1YmdyYXBoIEJST0tFUiBbIkhldXJDaGFpbiBCcm9rZXIgOjMwMTIiXQogICAgICAgIFNNWyJTZXNzaW9uIE1hbmFnZXIKYWdlbnQgbmFtZXNwYWNpbmciXQogICAgICAgIFRSWyJUaWVyIFJvdXRlcgprZXkgcHJlZml4IHJvdXRpbmciXQogICAgICAgIEJNWyJCTTI1IEluZGV4CmluLW1lbW9yeSBzZWFyY2giXQogICAgZW5kCiAgICBzdWJncmFwaCBTVE9SRSBbIlN0b3JhZ2UgTGF5ZXIiXQogICAgICAgIFdbIk9yaSBWYXVsdApXb3JraW5nIFRpZXIKNy1kYXkgYXV0by1wcm9tb3RlIl0KICAgICAgICBSWygiUmVkaXMKTG9uZ3Rlcm0gVGllciIpXQogICAgICAgIE9bIk9ic2lkaWFuIFZhdWx0Ck1hcmtkb3duIG1pcnJvciJdCiAgICBlbmQKICAgIEExIC0tPnxNQ1AgU1NFfCBOCiAgICBBMiAtLT58SFRUUCBSRVNUfCBCUk9LRVIKICAgIE4gLS0+IE0KICAgIE0gLS0+IEJST0tFUgogICAgQlJPS0VSIC0tPiBTTSAtLT4gVFIKICAgIEJST0tFUiA8LS0+fHNjb3JlL2luZGV4fCBCTQogICAgVFIgLS0+fG1lbW9yeTogcHJlZml4fCBXCiAgICBUUiAtLT58ZG9jOiBrbm93bGVkZ2U6IHNlc3Npb246fCBSCiAgICBSIC0tPnxhdXRvLW1pcnJvcnwgTwogICAgQk0gPC0tPnxTQ0FOfCBSCiAgICBCTSA8LS0+fGdsb2IgbWR8IFcKICAgIFcgLS0+fGNvbnNvbGlkYXRpb24gNyBkYXlzfCBS" alt="HeurChain Architecture" width="100%" />
 
 ---
 
 ## Data flow — Prompt to Memory to Recall
 
-```mermaid
-sequenceDiagram
-    participant A as AI Agent
-    participant G as nginx :80
-    participant M as MCP Server :3010
-    participant B as Broker :3012
-    participant S as Session Manager
-    participant T as Tier Router
-    participant W as Ori Vault (Working)
-    participant L as Redis (Longterm)
-    participant X as BM25 Index
-
-    Note over A,X: ── STORE PATH ──────────────────────────────────────
-
-    A->>G: Connect (MCP SSE) or POST /store (HTTP)
-    G->>M: Proxy SSE connection
-    A->>B: POST /session/start {agent_name}
-    B->>S: Create session → session_id
-    S-->>A: {session_id}
-
-    A->>B: POST /agent/store {agent_name, session_id, key, content, persist}
-    B->>S: Namespace key → memory:agent:{name}:{sid}:{key}
-    S->>T: classify_tier(key)
-    T->>W: Write to Ori vault (working tier)
-    T->>L: Write to Redis (longterm, if persist=true)
-    L->>X: Update BM25 index
-
-    A->>B: POST /session/end {session_id, summary}
-    B->>L: Store session metadata + summary (searchable)
-
-    Note over A,X: ── RECALL PATH ─────────────────────────────────────
-
-    A->>B: GET /agent/{name}/recall
-    B->>S: Resolve most recent session
-    S->>W: Fetch working-tier entries
-    S->>L: Fetch longterm entries
-    B-->>A: {working[], longterm[], session_meta}
-
-    A->>B: GET /search?q=your query&limit=10
-    B->>X: BM25 score across all indexed docs
-    X->>W: Scan Ori vault markdown
-    X->>L: Scan Redis keyspace
-    B-->>A: Ranked results [{key, score, content, tier}]
-```
+<img src="https://mermaid.ink/img/c2VxdWVuY2VEaWFncmFtCiAgICBwYXJ0aWNpcGFudCBBIGFzIEFJIEFnZW50CiAgICBwYXJ0aWNpcGFudCBCIGFzIEJyb2tlciA6MzAxMgogICAgcGFydGljaXBhbnQgUyBhcyBTZXNzaW9uIE1hbmFnZXIKICAgIHBhcnRpY2lwYW50IFQgYXMgVGllciBSb3V0ZXIKICAgIHBhcnRpY2lwYW50IFcgYXMgT3JpIFZhdWx0IFdvcmtpbmcKICAgIHBhcnRpY2lwYW50IFIgYXMgUmVkaXMgTG9uZ3Rlcm0KICAgIHBhcnRpY2lwYW50IFggYXMgQk0yNSBJbmRleAogICAgTm90ZSBvdmVyIEEsWDogU1RPUkUKICAgIEEtPj5COiBQT1NUIC9zZXNzaW9uL3N0YXJ0CiAgICBCLT4+UzogY3JlYXRlIHNlc3Npb25faWQKICAgIFMtLT4+QTogc2Vzc2lvbl9pZAogICAgQS0+PkI6IFBPU1QgL2FnZW50L3N0b3JlIGtleSBjb250ZW50IHBlcnNpc3QKICAgIEItPj5TOiBuYW1lc3BhY2Uga2V5CiAgICBTLT4+VDogY2xhc3NpZnlfdGllcgogICAgVC0+Plc6IHdyaXRlIHdvcmtpbmcgdGllcgogICAgVC0+PlI6IHdyaXRlIGxvbmd0ZXJtIGlmIHBlcnNpc3QgdHJ1ZQogICAgUi0+Plg6IHVwZGF0ZSBCTTI1IGluZGV4CiAgICBBLT4+QjogUE9TVCAvc2Vzc2lvbi9lbmQgc3VtbWFyeQogICAgQi0+PlI6IHN0b3JlIHNlc3Npb24gbWV0YWRhdGEKICAgIE5vdGUgb3ZlciBBLFg6IFJFQ0FMTAogICAgQS0+PkI6IEdFVCAvYWdlbnQvbmFtZS9yZWNhbGwKICAgIEItPj5XOiBmZXRjaCB3b3JraW5nIGVudHJpZXMKICAgIEItPj5SOiBmZXRjaCBsb25ndGVybSBlbnRyaWVzCiAgICBCLS0+PkE6IHdvcmtpbmcgbG9uZ3Rlcm0gc2Vzc2lvbl9tZXRhCiAgICBBLT4+QjogR0VUIC9zZWFyY2g/cT1xdWVyeQogICAgQi0+Plg6IEJNMjUgc2NvcmUgYWxsIGRvY3MKICAgIFgtPj5XOiBzY2FuIE9yaSB2YXVsdAogICAgWC0+PlI6IHNjYW4gUmVkaXMga2V5c3BhY2UKICAgIEItLT4+QTogcmFua2VkIHJlc3VsdHMga2V5IHNjb3JlIGNvbnRlbnQgdGllcg==" alt="HeurChain Data Flow — Store and Recall" width="100%" />
 
 ---
 
