@@ -1,6 +1,6 @@
 # HeurChain
 
-**One memory system. Every AI agent.**
+**One memory system. Every AI agent. Simultaneously.**
 
 HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kimi, Hermes, OpenClaw, ChatGPT, and any HTTP or MCP client share the same tiered knowledge store — BM25-ranked search, session continuity, and automatic tier promotion — without any agent-specific configuration beyond a URL and an interface choice.
 
