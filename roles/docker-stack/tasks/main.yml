@@ -47,16 +47,13 @@
     chdir: "{{ mcp_deploy_path }}"
   changed_when: true
 
-- name: Restart MCP server to load new tools
-  ansible.builtin.command: docker restart obsidian-mcp
-  changed_when: true
-
-- name: Wait for Redis to be healthy
-  ansible.builtin.command: docker exec redis-cache redis-cli ping
+- name: Verify system Redis is reachable from host
+  ansible.builtin.command: redis-cli ping
   register: redis_health
   until: redis_health.stdout == "PONG"
   retries: 6
   delay: 5
+  changed_when: false
 
 - name: Wait for MCP server to respond
   ansible.builtin.uri:

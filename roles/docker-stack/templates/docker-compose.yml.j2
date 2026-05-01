@@ -1,40 +1,24 @@
 name: "{{ mcp_network_name }}"
 
 services:
-  redis:
-    image: redis:{{ redis_version }}
-    container_name: redis-cache
-    restart: unless-stopped
-    security_opt:
-      - apparmor:unconfined
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --maxmemory {{ redis_maxmemory }} --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   obsidian-mcp:
     image: node:{{ node_version }}
     container_name: obsidian-mcp
     restart: unless-stopped
     security_opt:
       - apparmor:unconfined
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "{{ mcp_port }}:{{ mcp_port }}"
     environment:
       - NODE_ENV=production
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://host.docker.internal:6379
       - MCP_PORT={{ mcp_port }}
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
     volumes:
       - "{{ mcp_deploy_path }}/app:/app"
       - "{{ obsidian_vault_path | default('/opt/obsidian-vault') }}:/obsidian-vault"
-    depends_on:
-      redis:
-        condition: service_healthy
     working_dir: /app
     command: bash -c "npm install --omit=dev --silent 2>/dev/null && node server.js"
     healthcheck:
@@ -56,6 +40,3 @@ services:
       - "{{ mcp_deploy_path }}/nginx.conf:/etc/nginx/nginx.conf:ro"
     depends_on:
       - obsidian-mcp
-
-volumes:
-  redis-data:
