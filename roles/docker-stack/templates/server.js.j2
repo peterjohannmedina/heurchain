@@ -14,6 +14,7 @@ const redis = createClient({ url: process.env.REDIS_URL || "redis://localhost:63
 redis.on("error", (err) => console.error("Redis error:", err));
 
 const OBSIDIAN_VAULT_PATH = process.env.OBSIDIAN_VAULT_PATH || "/opt/obsidian-vault";
+const HEURCHAIN_URL = process.env.HEURCHAIN_URL || "http://host.docker.internal:3012";
 
 (async () => {
   await redis.connect();
@@ -240,6 +241,26 @@ function createMcpServerInstance() {
     try {
       const results = await listObsidian(prefix);
       return { content: [{ type: "text", text: JSON.stringify({ count: results.length, notes: results }) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: JSON.stringify({ error: e.message }) }] };
+    }
+  });
+
+  // --- HeurChain BM25 Search ---
+
+  server.tool("heurchain_search", "Search the full knowledge base using HeurChain's BM25 ranked index (preferred over obsidian_search_notes — covers all 460+ Redis keys with relevance scoring)", {
+    query: z.string().describe("Search query"),
+    limit: z.number().optional().describe("Max results (default 10, max 50)").default(10),
+    tier: z.string().optional().describe("'all' | 'longterm' | 'working' (default: all)").default("all")
+  }, async ({ query, limit, tier }) => {
+    try {
+      const url = `${HEURCHAIN_URL}/search?q=${encodeURIComponent(query)}&limit=${limit}&tier=${tier}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: `HeurChain returned HTTP ${response.status}` }) }] };
+      }
+      const results = await response.json();
+      return { content: [{ type: "text", text: JSON.stringify({ count: results.length, results: results.map(r => ({ key: r.key, score: r.score, tier: r.tier, preview: (r.content || "").substring(0, 300), updated_at: r.updated_at })) }) }] };
     } catch (e) {
       return { content: [{ type: "text", text: JSON.stringify({ error: e.message }) }] };
     }
@@ -503,6 +524,7 @@ app.get("/api/tools", (req, res) => {
     "cache_set", "cache_get", "cache_delete", "redis_stats", "health_check",
     "obsidian_write_note", "obsidian_read_note", "obsidian_delete_note",
     "obsidian_search_notes", "obsidian_list_notes",
+    "heurchain_search",
     "prometheus_get_targets", "prometheus_get_alerts", "prometheus_query",
     "grafana_get_health", "grafana_list_dashboards",
     "proxmox_get_cluster_status", "proxmox_list_nodes", "proxmox_find_vm",

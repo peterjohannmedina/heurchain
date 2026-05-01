@@ -1,5 +1,30 @@
 # Ansible Local Dev Log
 
+---
+
+## (pending commit) — feat(second-brain): add heurchain_search MCP tool
+
+**Date:** 2026-05-01  
+**Context:** `obsidian_search_notes` does a naive case-insensitive substring walk across the Obsidian vault filesystem. HeurChain runs a BM25 in-memory index across the full 460+ key Redis store with ranked scoring — a strictly better search surface for agent knowledge retrieval. Adding `heurchain_search` as an MCP tool proxies directly to HeurChain's `/search` endpoint so Claude Code agents use ranked retrieval instead of string matching.
+
+### What changed
+
+**`roles/docker-stack/templates/server.js.j2`**
+
+Added `HEURCHAIN_URL` constant (env-overridable, defaults to `http://host.docker.internal:3012`) and a new MCP tool:
+
+| Tool | What it does |
+|------|-------------|
+| `heurchain_search` | `GET /search?q=...&limit=...&tier=...` on HeurChain; returns ranked results with key, BM25 score, tier, 300-char preview, updated_at |
+
+Updated `/api/tools` list to include `heurchain_search`.
+
+The tool description explicitly marks it as preferred over `obsidian_search_notes` so agents choose it by default for knowledge base queries.
+
+### Deployment
+
+Requires `ansible-playbook --tags docker` to rebuild and redeploy the MCP container with the new server.js.
+
 Running notes on what changed and why, committed alongside each local change.
 Edit this file with each commit — one entry per commit, newest at top.
 
