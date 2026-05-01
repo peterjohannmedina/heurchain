@@ -1,5 +1,8 @@
 name: "heurchain"
 
+# MCP_PORT and HEURCHAIN_PORT control which host ports are exposed.
+# Internal container ports are always 3010 (mcp) and 3012 (broker).
+
 services:
   redis:
     image: redis:7.2-alpine
@@ -26,7 +29,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MEMORY_BROKER_PORT=${HEURCHAIN_PORT:-3012}
+      - MEMORY_BROKER_PORT=3012
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
       - ORI_VAULT_PATH=/ori-vault
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
@@ -59,17 +62,17 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
-      - MCP_PORT=${MCP_PORT:-3010}
+      - MCP_PORT=3010
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
-      - HEURCHAIN_URL=http://broker:${HEURCHAIN_PORT:-3012}
+      - HEURCHAIN_URL=http://broker:3012
       - GRAFANA_USER=${GRAFANA_USER:-admin}
       - GRAFANA_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
       - "${OBSIDIAN_VAULT_PATH:-./data/obsidian-vault}:/obsidian-vault"
     ports:
-      - "${MCP_PORT:-3010}:${MCP_PORT:-3010}"
+      - "${MCP_PORT:-3010}:3010"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"const p=process.env.MCP_PORT||3010;const h=require('http');h.get('http://localhost:'+p+'/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"const h=require('http');h.get('http://localhost:3010/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))\""]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -81,10 +84,8 @@ services:
     restart: unless-stopped
     depends_on:
       - mcp
-    environment:
-      - MCP_PORT=${MCP_PORT:-3010}
     volumes:
-      - "./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro"
+      - "./nginx.conf:/etc/nginx/nginx.conf:ro"
     ports:
       - "${NGINX_PORT:-80}:80"
 
