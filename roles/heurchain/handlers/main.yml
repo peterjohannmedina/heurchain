@@ -1,0 +1,9 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart memory-broker
+  ansible.builtin.service:
+    name: memory-broker
+    state: restarted

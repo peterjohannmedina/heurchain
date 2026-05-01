@@ -18,7 +18,7 @@ const HEURCHAIN_URL = process.env.HEURCHAIN_URL || "http://host.docker.internal:
 
 (async () => {
   await redis.connect();
-  const port = parseInt(process.env.MCP_PORT, 10) || {{ mcp_port }};
+  const port = parseInt(process.env.MCP_PORT, 10) || 3010;
   app.listen(port, () => console.log("MCP server listening on port " + port));
 })();
 
@@ -311,7 +311,7 @@ function createMcpServerInstance() {
 
   // --- Grafana Monitoring Tools ---
 
-  const grafanaAuth = "Basic " + Buffer.from("{{ grafana_user }}:{{ grafana_password }}").toString("base64");
+  const grafanaAuth = "Basic " + Buffer.from(`${process.env.GRAFANA_USER || "admin"}:${process.env.GRAFANA_PASSWORD || "admin"}`).toString("base64");
 
   server.tool("grafana_get_health", "Check the health status of the Grafana server", {}, async () => {
     try {

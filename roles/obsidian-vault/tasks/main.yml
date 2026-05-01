@@ -1,0 +1,62 @@
+---
+- name: Create Obsidian vault root
+  ansible.builtin.file:
+    path: "{{ obsidian_vault_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Create standard vault subdirectories
+  ansible.builtin.file:
+    path: "{{ obsidian_vault_path }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - doc
+    - knowledge
+    - memory
+    - task
+    - audit
+    - research
+    - infra
+    - security
+    - quickref
+    - config
+    - .obsidian
+
+- name: Write minimal Obsidian app config
+  ansible.builtin.copy:
+    dest: "{{ obsidian_vault_path }}/.obsidian/app.json"
+    content: |
+      {
+        "promptDelete": false,
+        "alwaysUpdateLinks": true
+      }
+    mode: "0644"
+    force: false
+
+- name: Write vault index note
+  ansible.builtin.copy:
+    dest: "{{ obsidian_vault_path }}/index.md"
+    content: |
+      # Memory Stack Vault
+
+      This vault is managed by the memory stack (HeurChain + second-brain MCP).
+
+      ## Tier structure
+
+      | Directory | Purpose |
+      |-----------|---------|
+      | `doc/` | Long-term reference documents |
+      | `knowledge/` | Domain knowledge base |
+      | `memory/` | Session and working memory |
+      | `task/` | Task and project notes |
+      | `audit/` | Audit logs |
+      | `research/` | Research notes |
+      | `infra/` | Infrastructure documentation |
+      | `security/` | Security notes |
+      | `quickref/` | Quick reference cards |
+      | `config/` | Configuration records |
+
+      Keys written by HeurChain map to paths: `doc:proxmox:setup` → `doc/proxmox/setup.md`
+    mode: "0644"
+    force: false

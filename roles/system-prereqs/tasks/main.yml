@@ -1,0 +1,39 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install base system packages
+  ansible.builtin.package:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - redis-tools
+      - git
+      - curl
+      - ca-certificates
+      - gnupg
+    state: present
+
+- name: Check if docker is installed
+  ansible.builtin.command: docker --version
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Install docker.io (distro package)
+  ansible.builtin.package:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+  when: docker_check.rc != 0
+
+- name: Ensure Docker service is running and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: docker_check.rc != 0

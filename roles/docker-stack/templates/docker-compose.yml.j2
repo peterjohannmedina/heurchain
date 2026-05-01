@@ -16,6 +16,8 @@ services:
       - REDIS_URL=redis://host.docker.internal:6379
       - MCP_PORT={{ mcp_port }}
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
+      - GRAFANA_USER={{ grafana_user }}
+      - GRAFANA_PASSWORD={{ grafana_password }}
     volumes:
       - "{{ mcp_deploy_path }}/app:/app"
       - "{{ obsidian_vault_path | default('/opt/obsidian-vault') }}:/obsidian-vault"

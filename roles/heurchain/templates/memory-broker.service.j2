@@ -1,0 +1,19 @@
+[Unit]
+Description=HeurChain Memory Broker Service
+After=network.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+User=root
+WorkingDirectory={{ heurchain_deploy_path }}
+ExecStart={{ heurchain_deploy_path }}/venv/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port {{ heurchain_port }}
+Restart=always
+RestartSec=5
+Environment=REDIS_HOST={{ redis_host | default('localhost') }}
+Environment=REDIS_PORT={{ redis_port | default('6379') }}
+Environment=MEMORY_BROKER_PORT={{ heurchain_port }}
+Environment=OBSIDIAN_VAULT_PATH={{ obsidian_vault_path }}
+Environment=ORI_VAULT_PATH={{ ori_vault_path }}
+
+[Install]
+WantedBy=multi-user.target

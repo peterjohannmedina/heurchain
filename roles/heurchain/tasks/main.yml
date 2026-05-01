@@ -1,0 +1,53 @@
+---
+- name: Create HeurChain deploy directory
+  ansible.builtin.file:
+    path: "{{ heurchain_deploy_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy HeurChain source files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ heurchain_deploy_path }}/{{ item }}"
+    mode: "0644"
+  loop:
+    - main.py
+    - reseed.py
+    - consolidation_worker.py
+    - requirements.txt
+  notify: Restart memory-broker
+
+- name: Create Python venv
+  ansible.builtin.command:
+    cmd: python3 -m venv {{ heurchain_deploy_path }}/venv
+    creates: "{{ heurchain_deploy_path }}/venv/bin/python3"
+
+- name: Install Python dependencies
+  ansible.builtin.pip:
+    requirements: "{{ heurchain_deploy_path }}/requirements.txt"
+    virtualenv: "{{ heurchain_deploy_path }}/venv"
+
+- name: Deploy systemd service unit
+  ansible.builtin.template:
+    src: memory-broker.service.j2
+    dest: /etc/systemd/system/memory-broker.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart memory-broker
+
+- name: Enable and start memory-broker
+  ansible.builtin.service:
+    name: memory-broker
+    state: started
+    enabled: true
+
+- name: Wait for memory-broker to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:{{ heurchain_port }}/health"
+    status_code: 200
+  register: heurchain_health
+  until: heurchain_health.status == 200
+  retries: 12
+  delay: 5
+  changed_when: false

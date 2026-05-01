@@ -1,5 +1,5 @@
 ---
-- name: Deploy Second-Brain MCP Infrastructure on CT 203
+- name: Deploy Memory Stack (HeurChain + Second-Brain MCP) on CT 203
   hosts: ct203
   gather_facts: true
   become: yes
@@ -13,8 +13,17 @@
         msg: "Deploying to {{ ansible_hostname }} ({{ ct_ip }})"
 
   roles:
+    - role: system-prereqs
+      tags: [system, prereqs]
+
+    - role: obsidian-vault
+      tags: [system, obsidian]
+
     - role: system-redis
       tags: [docker, system-redis]
+
+    - role: heurchain
+      tags: [heurchain, system]
 
     - role: docker-stack
       tags: docker
@@ -27,11 +36,13 @@
       ansible.builtin.debug:
         msg:
           - "=========================================="
-          - "Second-Brain MCP Deployment Complete!"
+          - "Memory Stack Deployment Complete!"
           - "=========================================="
+          - "HeurChain:   http://{{ ct_ip }}:{{ heurchain_port }}"
           - "MCP Server:  http://{{ ct_ip }}:{{ mcp_port }}"
           - "Nginx GW:    http://{{ ct_ip }}:{{ nginx_port }}"
-          - "System Redis: redis://{{ ct_ip }}:6379 (shared with HeurChain)"
+          - "System Redis: redis://{{ ct_ip }}:6379 (shared)"
+          - "Obsidian vault: {{ obsidian_vault_path }}"
           - "Prometheus:  http://{{ ct_ip }}:{{ prometheus_port }}"
           - "Grafana:     http://{{ ct_ip }}:{{ grafana_port }} (admin/{{ grafana_password }})"
           - "=========================================="
