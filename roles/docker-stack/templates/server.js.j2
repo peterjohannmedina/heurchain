@@ -125,7 +125,7 @@ async function listObsidian(prefix) {
 
 function createMcpServerInstance() {
   const server = new McpServer({
-    name: "second-brain-mcp",
+    name: "heurchain-mcp",
     version: "1.1.0"
   });
 

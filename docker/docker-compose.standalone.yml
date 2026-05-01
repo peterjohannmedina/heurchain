@@ -1,9 +1,9 @@
-name: "memory-stack"
+name: "heurchain"
 
 services:
   redis:
     image: redis:7.2-alpine
-    container_name: memory-redis
+    container_name: heurchain-redis
     restart: unless-stopped
     volumes:
       - redis-data:/data
@@ -13,12 +13,12 @@ services:
       timeout: 5s
       retries: 3
 
-  heurchain:
+  broker:
     build:
       context: .
       dockerfile: Dockerfile.heurchain
-    image: memory-heurchain
-    container_name: memory-heurchain
+    image: heurchain-broker
+    container_name: heurchain-broker
     restart: unless-stopped
     depends_on:
       redis:
@@ -45,21 +45,21 @@ services:
       retries: 3
       start_period: 30s
 
-  obsidian-mcp:
+  mcp:
     image: node:22-slim
-    container_name: memory-mcp
+    container_name: heurchain-mcp
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
-      heurchain:
+      broker:
         condition: service_healthy
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
       - MCP_PORT=${MCP_PORT:-3010}
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
-      - HEURCHAIN_URL=http://heurchain:${HEURCHAIN_PORT:-3012}
+      - HEURCHAIN_URL=http://broker:${HEURCHAIN_PORT:-3012}
       - GRAFANA_USER=${GRAFANA_USER:-admin}
       - GRAFANA_PASSWORD=${GRAFANA_PASSWORD:-admin}
     volumes:
@@ -78,10 +78,10 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
-    container_name: memory-nginx
+    container_name: heurchain-nginx
     restart: unless-stopped
     depends_on:
-      - obsidian-mcp
+      - mcp
     volumes:
       - "./nginx.conf:/etc/nginx/nginx.conf:ro"
     ports:

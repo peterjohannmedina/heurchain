@@ -1,32 +1,44 @@
-﻿---
+---
 all:
   hosts:
     ct203:
       ansible_host: 192.168.1.203
       ansible_user: root
-      ansible_ssh_pass: "YOUR_SSH_PASSWORD"
+      ansible_ssh_private_key_file: ~/.ssh/id_ed25519
       ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
   vars:
+    # Target host
     ct_ip: "192.168.1.203"
-    ct_hostname: "mcp-test201"
+    ct_hostname: "heurchain-node"
 
+    # System Redis — bind IPs for Docker container access
+    redis_docker0_gw: "172.17.0.1"
+    redis_compose_gw: "172.19.0.1"
+
+    # HeurChain memory broker
+    heurchain_deploy_path: /opt/heurchain
+    heurchain_port: 3012
+    ori_vault_path: /opt/ori-vault/
+
+    # MCP server (HeurChain MCP interface)
     mcp_port: 3010
-    mcp_deploy_path: /opt/second-brain-mcp
+    mcp_deploy_path: /opt/heurchain-mcp
     obsidian_vault_path: /opt/obsidian-vault
+    mcp_network_name: "heurchain"
 
-    redis_version: "7-alpine"
-    nginx_version: "alpine"
-    prometheus_version: "latest"
-    grafana_version: "latest"
+    # Docker image versions (pinned)
+    nginx_version: "1.27-alpine"
+    prometheus_version: "v2.53.0"
+    grafana_version: "11.1.0"
+    node_version: "22-slim"
 
-    redis_port: 6379
+    # Service ports
     nginx_port: 80
     prometheus_port: 9090
     grafana_port: 3001
 
-    redis_maxmemory: "256mb"
-
+    # Credentials (use ansible-vault for production)
     mcp_admin_user: "admin"
     grafana_user: "admin"
     grafana_password: "YOUR_GRAFANA_PASSWORD"

@@ -13,12 +13,12 @@ http {
         client_max_body_size 10m;
 
         location /health {
-            proxy_pass http://obsidian-mcp:{{ mcp_port }}/health;
+            proxy_pass http://heurchain-mcp:{{ mcp_port }}/health;
             proxy_set_header Host $host;
         }
 
         location /sse {
-            proxy_pass http://obsidian-mcp:{{ mcp_port }}/sse;
+            proxy_pass http://heurchain-mcp:{{ mcp_port }}/sse;
             proxy_set_header Host $host;
             proxy_set_header Connection '';
             proxy_http_version 1.1;
@@ -29,20 +29,20 @@ http {
         }
 
         location /messages {
-            proxy_pass http://obsidian-mcp:{{ mcp_port }}/messages;
+            proxy_pass http://heurchain-mcp:{{ mcp_port }}/messages;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
         location /api/ {
-            proxy_pass http://obsidian-mcp:{{ mcp_port }}/api/;
+            proxy_pass http://heurchain-mcp:{{ mcp_port }}/api/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         }
 
         location / {
-            return 200 "Second-Brain MCP Gateway - OK\n";
+            return 200 "HeurChain Gateway - OK\n";
             add_header Content-Type text/plain;
         }
     }

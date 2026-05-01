@@ -5,9 +5,9 @@ global:
 scrape_configs:
   - job_name: "mcp-server"
     static_configs:
-      - targets: ["obsidian-mcp:{{ mcp_port }}"]
+      - targets: ["heurchain-mcp:{{ mcp_port }}"]
         labels:
-          service: "obsidian-mcp"
+          service: "heurchain-mcp"
 
   - job_name: "nginx"
     static_configs:
