@@ -536,14 +536,15 @@ app.get("/api/tools", (req, res) => {
 
 app.post("/api/cache", jsonParser, async (req, res) => {
   const { key, value, ttl } = req.body;
-  if (ttl) await redis.setEx(key, ttl, JSON.stringify(value));
-  else await redis.set(key, JSON.stringify(value));
+  const stored = typeof value === "string" ? value : JSON.stringify(value);
+  if (ttl) await redis.setEx(key, ttl, stored);
+  else await redis.set(key, stored);
   res.json({ cached: true });
 });
 
 app.get("/api/cache/:key", async (req, res) => {
   const val = await redis.get(req.params.key);
-  if (val) res.json({ hit: true, data: JSON.parse(val) });
+  if (val) res.json({ hit: true, data: val });
   else res.json({ hit: false });
 });
 
