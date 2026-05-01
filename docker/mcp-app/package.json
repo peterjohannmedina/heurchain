@@ -1,6 +1,6 @@
 {
-  "name": "heurchain-mcp",
-  "version": "1.1.1",
+  "name": "heurchain-memory",
+  "version": "1.0.0",
   "description": "MCP (Model Context Protocol) server for HeurChain — tiered agent memory with BM25 search, session lifecycle, and infrastructure knowledge tools",
   "main": "server.js",
   "scripts": {

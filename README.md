@@ -4,7 +4,7 @@
 
 HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kimi, Hermes, OpenClaw, ChatGPT, and any HTTP or MCP client share the same tiered knowledge store — BM25-ranked search, session continuity, and automatic tier promotion — without any agent-specific configuration beyond a URL and an interface choice.
 
-[![npm version](https://img.shields.io/npm/v/heurchain-mcp)](https://www.npmjs.com/package/heurchain-mcp)
+[![npm version](https://img.shields.io/npm/v/heurchain-memory)](https://www.npmjs.com/package/heurchain-memory)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node ≥ 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
 [![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)](https://docs.docker.com/compose/)
@@ -32,7 +32,7 @@ HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kim
 
 ## Data flow — Prompt to Memory to Recall
 
-<img src="https://mermaid.ink/img/c2VxdWVuY2VEaWFncmFtCiAgICBwYXJ0aWNpcGFudCBBIGFzIEFJIEFnZW50CiAgICBwYXJ0aWNpcGFudCBCIGFzIEJyb2tlciA6MzAxMgogICAgcGFydGljaXBhbnQgUyBhcyBTZXNzaW9uIE1hbmFnZXIKICAgIHBhcnRpY2lwYW50IFQgYXMgVGllciBSb3V0ZXIKICAgIHBhcnRpY2lwYW50IFcgYXMgT3JpIFZhdWx0IFdvcmtpbmcKICAgIHBhcnRpY2lwYW50IFIgYXMgUmVkaXMgTG9uZ3Rlcm0KICAgIHBhcnRpY2lwYW50IFggYXMgQk0yNSBJbmRleAogICAgTm90ZSBvdmVyIEEsWDogU1RPUkUKICAgIEEtPj5COiBQT1NUIC9zZXNzaW9uL3N0YXJ0CiAgICBCLT4+UzogY3JlYXRlIHNlc3Npb25faWQKICAgIFMtLT4+QTogc2Vzc2lvbl9pZAogICAgQS0+PkI6IFBPU1QgL2FnZW50L3N0b3JlIGtleSBjb250ZW50IHBlcnNpc3QKICAgIEItPj5TOiBuYW1lc3BhY2Uga2V5CiAgICBTLT4+VDogY2xhc3NpZnlfdGllcgogICAgVC0+Plc6IHdyaXRlIHdvcmtpbmcgdGllcgogICAgVC0+PlI6IHdyaXRlIGxvbmd0ZXJtIGlmIHBlcnNpc3QgdHJ1ZQogICAgUi0+Plg6IHVwZGF0ZSBCTTI1IGluZGV4CiAgICBBLT4+QjogUE9TVCAvc2Vzc2lvbi9lbmQgc3VtbWFyeQogICAgQi0+PlI6IHN0b3JlIHNlc3Npb24gbWV0YWRhdGEKICAgIE5vdGUgb3ZlciBBLFg6IFJFQ0FMTAogICAgQS0+PkI6IEdFVCAvYWdlbnQvbmFtZS9yZWNhbGwKICAgIEItPj5XOiBmZXRjaCB3b3JraW5nIGVudHJpZXMKICAgIEItPj5SOiBmZXRjaCBsb25ndGVybSBlbnRyaWVzCiAgICBCLS0+PkE6IHdvcmtpbmcgbG9uZ3Rlcm0gc2Vzc2lvbl9tZXRhCiAgICBBLT4+QjogR0VUIC9zZWFyY2g/cT1xdWVyeQogICAgQi0+Plg6IEJNMjUgc2NvcmUgYWxsIGRvY3MKICAgIFgtPj5XOiBzY2FuIE9yaSB2YXVsdAogICAgWC0+PlI6IHNjYW4gUmVkaXMga2V5c3BhY2UKICAgIEItLT4+QTogcmFua2VkIHJlc3VsdHMga2V5IHNjb3JlIGNvbnRlbnQgdGllcg==" alt="HeurChain Data Flow — Store and Recall" width="100%" />
+<img src="https://mermaid.ink/img/c2VxdWVuY2VEaWFncmFtCiAgICBwYXJ0aWNpcGFudCBBZ2VudAogICAgcGFydGljaXBhbnQgQnJva2VyIGFzIEJyb2tlciA6MzAxMgogICAgcGFydGljaXBhbnQgU2Vzc2lvbnMgYXMgU2Vzc2lvbiBNZ3IKICAgIHBhcnRpY2lwYW50IFRpZXIgYXMgVGllciBSb3V0ZXIKICAgIHBhcnRpY2lwYW50IFdvcmtpbmcgYXMgT3JpIFZhdWx0CiAgICBwYXJ0aWNpcGFudCBMb25ndGVybSBhcyBSZWRpcwogICAgcGFydGljaXBhbnQgQk0yNQoKICAgIHJlY3QgcmdiKDMwLDYwLDEwMCkKICAgICAgICBOb3RlIG92ZXIgQWdlbnQsQk0yNTogU1RPUkUKICAgICAgICBBZ2VudC0+PkJyb2tlcjogUE9TVCAvc2Vzc2lvbi9zdGFydAogICAgICAgIEJyb2tlci0+PlNlc3Npb25zOiBjcmVhdGUgc2Vzc2lvbl9pZAogICAgICAgIFNlc3Npb25zLS0+PkFnZW50OiBzZXNzaW9uX2lkCiAgICAgICAgQWdlbnQtPj5Ccm9rZXI6IFBPU1QgL2FnZW50L3N0b3JlIHtrZXksIGNvbnRlbnQsIHBlcnNpc3R9CiAgICAgICAgQnJva2VyLT4+U2Vzc2lvbnM6IG5hbWVzcGFjZSBrZXkKICAgICAgICBTZXNzaW9ucy0+PlRpZXI6IGNsYXNzaWZ5X3RpZXIoa2V5KQogICAgICAgIFRpZXItPj5Xb3JraW5nOiB3cml0ZSB3b3JraW5nIHRpZXIKICAgICAgICBUaWVyLT4+TG9uZ3Rlcm06IHdyaXRlIGxvbmd0ZXJtIGlmIHBlcnNpc3Q9dHJ1ZQogICAgICAgIExvbmd0ZXJtLT4+Qk0yNTogdXBkYXRlIGluZGV4CiAgICAgICAgQWdlbnQtPj5Ccm9rZXI6IFBPU1QgL3Nlc3Npb24vZW5kIHtzdW1tYXJ5fQogICAgICAgIEJyb2tlci0+Pkxvbmd0ZXJtOiBzdG9yZSBzZXNzaW9uICsgc3VtbWFyeQogICAgZW5kCgogICAgcmVjdCByZ2IoMzAsODAsNjApCiAgICAgICAgTm90ZSBvdmVyIEFnZW50LEJNMjU6IFJFQ0FMTAogICAgICAgIEFnZW50LT4+QnJva2VyOiBHRVQgL2FnZW50L3tuYW1lfS9yZWNhbGwKICAgICAgICBCcm9rZXItPj5Xb3JraW5nOiBmZXRjaCB3b3JraW5nIGVudHJpZXMKICAgICAgICBCcm9rZXItPj5Mb25ndGVybTogZmV0Y2ggbG9uZ3Rlcm0gZW50cmllcwogICAgICAgIEJyb2tlci0tPj5BZ2VudDogd29ya2luZ1tdICsgbG9uZ3Rlcm1bXQogICAgICAgIEFnZW50LT4+QnJva2VyOiBHRVQgL3NlYXJjaD9xPXF1ZXJ5CiAgICAgICAgQnJva2VyLT4+Qk0yNTogc2NvcmUgYWxsIGRvY3MKICAgICAgICBCTTI1LT4+V29ya2luZzogc2NhbiBPcmkgdmF1bHQKICAgICAgICBCTTI1LT4+TG9uZ3Rlcm06IHNjYW4gUmVkaXMga2V5c3BhY2UKICAgICAgICBCcm9rZXItLT4+QWdlbnQ6IHJhbmtlZCByZXN1bHRzCiAgICBlbmQ" alt="HeurChain Data Flow — Store and Recall" width="100%" />
 
 ---
 
@@ -64,7 +64,7 @@ curl http://localhost/              # nginx gateway (SSE entry point)
 ### npm (MCP server only — requires a running broker)
 
 ```bash
-npm install heurchain-mcp
+npm install heurchain-memory
 ```
 
 The npm package ships `server.js` and `AGENT_CONFIG.json`. The broker (FastAPI + Redis) must be running separately — use Docker standalone or the Ansible role for a managed host.
