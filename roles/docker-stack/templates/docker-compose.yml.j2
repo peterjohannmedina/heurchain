@@ -5,8 +5,8 @@ services:
     image: redis:{{ redis_version }}
     container_name: redis-cache
     restart: unless-stopped
-    ports:
-      - "{{ redis_port }}:6379"
+    security_opt:
+      - apparmor:unconfined
     volumes:
       - redis-data:/data
     command: redis-server --appendonly yes --maxmemory {{ redis_maxmemory }} --maxmemory-policy allkeys-lru
@@ -20,6 +20,8 @@ services:
     image: node:{{ node_version }}
     container_name: obsidian-mcp
     restart: unless-stopped
+    security_opt:
+      - apparmor:unconfined
     ports:
       - "{{ mcp_port }}:{{ mcp_port }}"
     environment:
@@ -46,6 +48,8 @@ services:
     image: nginx:{{ nginx_version }}
     container_name: nginx-gateway
     restart: unless-stopped
+    security_opt:
+      - apparmor:unconfined
     ports:
       - "{{ nginx_port }}:80"
     volumes:
