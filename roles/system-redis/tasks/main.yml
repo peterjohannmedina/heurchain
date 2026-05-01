@@ -1,0 +1,37 @@
+---
+- name: Ensure redis-server is installed
+  ansible.builtin.package:
+    name: redis-server
+    state: present
+
+- name: Configure Redis bind addresses
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^bind '
+    line: "bind 127.0.0.1 -::1 {{ redis_compose_gw }} {{ redis_docker0_gw }}"
+  notify: Restart redis-server
+
+- name: Disable Redis protected mode
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^protected-mode '
+    line: "protected-mode no"
+  notify: Restart redis-server
+
+- name: Ensure redis-server is running and enabled
+  ansible.builtin.service:
+    name: redis-server
+    state: started
+    enabled: true
+
+- name: Verify Redis is reachable on loopback
+  ansible.builtin.command: redis-cli ping
+  register: redis_ping
+  changed_when: false
+  failed_when: redis_ping.stdout != "PONG"
+
+- name: Verify Redis is reachable on compose gateway
+  ansible.builtin.command: redis-cli -h {{ redis_compose_gw }} ping
+  register: redis_ping_compose
+  changed_when: false
+  failed_when: redis_ping_compose.stdout != "PONG"

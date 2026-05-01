@@ -13,6 +13,9 @@
         msg: "Deploying to {{ ansible_hostname }} ({{ ct_ip }})"
 
   roles:
+    - role: system-redis
+      tags: [docker, system-redis]
+
     - role: docker-stack
       tags: docker
 
@@ -28,7 +31,7 @@
           - "=========================================="
           - "MCP Server:  http://{{ ct_ip }}:{{ mcp_port }}"
           - "Nginx GW:    http://{{ ct_ip }}:{{ nginx_port }}"
-          - "Redis Cache:  redis://{{ ct_ip }}:{{ redis_port }}"
+          - "System Redis: redis://{{ ct_ip }}:6379 (shared with HeurChain)"
           - "Prometheus:  http://{{ ct_ip }}:{{ prometheus_port }}"
           - "Grafana:     http://{{ ct_ip }}:{{ grafana_port }} (admin/{{ grafana_password }})"
           - "=========================================="
