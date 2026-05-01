@@ -1,0 +1,8 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://{{ ct_ip }}:{{ prometheus_port }}
+    isDefault: true
+    editable: true

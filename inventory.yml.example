@@ -1,0 +1,32 @@
+﻿---
+all:
+  hosts:
+    ct203:
+      ansible_host: 192.168.1.203
+      ansible_user: root
+      ansible_ssh_pass: "YOUR_SSH_PASSWORD"
+      ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+  vars:
+    ct_ip: "192.168.1.203"
+    ct_hostname: "mcp-test201"
+
+    mcp_port: 3010
+    mcp_deploy_path: /opt/second-brain-mcp
+    obsidian_vault_path: /opt/obsidian-vault
+
+    redis_version: "7-alpine"
+    nginx_version: "alpine"
+    prometheus_version: "latest"
+    grafana_version: "latest"
+
+    redis_port: 6379
+    nginx_port: 80
+    prometheus_port: 9090
+    grafana_port: 3001
+
+    redis_maxmemory: "256mb"
+
+    mcp_admin_user: "admin"
+    grafana_user: "admin"
+    grafana_password: "YOUR_GRAFANA_PASSWORD"

@@ -1,0 +1,34 @@
+---
+- name: Deploy Second-Brain MCP Infrastructure on CT 203
+  hosts: ct203
+  gather_facts: yes
+  become: yes
+
+  pre_tasks:
+    - name: Verify target is accessible
+      ping:
+
+    - name: Display target info
+      debug:
+        msg: "Deploying to {{ ansible_hostname }} ({{ ct_ip }})"
+
+  roles:
+    - role: docker-stack
+      tags: docker
+
+    - role: monitoring
+      tags: monitoring
+
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg:
+          - "=========================================="
+          - "Second-Brain MCP Deployment Complete!"
+          - "=========================================="
+          - "MCP Server:  http://{{ ct_ip }}:{{ mcp_port }}"
+          - "Nginx GW:    http://{{ ct_ip }}:{{ nginx_port }}"
+          - "Redis Cache:  redis://{{ ct_ip }}:{{ redis_port }}"
+          - "Prometheus:  http://{{ ct_ip }}:{{ prometheus_port }}"
+          - "Grafana:     http://{{ ct_ip }}:{{ grafana_port }} (admin/{{ grafana_password }})"
+          - "=========================================="

@@ -1,0 +1,74 @@
+---
+- name: Create MCP deployment directory
+  file:
+    path: "{{ mcp_deploy_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Create MCP app directory
+  file:
+    path: "{{ mcp_deploy_path }}/app"
+    state: directory
+    mode: "0755"
+
+- name: Deploy server.js
+  template:
+    src: server.js.j2
+    dest: "{{ mcp_deploy_path }}/app/server.js"
+    mode: "0644"
+
+- name: Deploy package.json
+  template:
+    src: package.json.j2
+    dest: "{{ mcp_deploy_path }}/app/package.json"
+    mode: "0644"
+
+- name: Deploy docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ mcp_deploy_path }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Deploy nginx configuration
+  template:
+    src: nginx.conf.j2
+    dest: "{{ mcp_deploy_path }}/nginx.conf"
+    mode: "0644"
+
+- name: Pull Docker images
+  shell: docker-compose pull
+  args:
+    chdir: "{{ mcp_deploy_path }}"
+  changed_when: true
+
+- name: Start Docker stack
+  shell: docker-compose up -d
+  args:
+    chdir: "{{ mcp_deploy_path }}"
+  changed_when: true
+
+- name: Restart MCP server to load new tools
+  shell: docker restart obsidian-mcp
+  changed_when: true
+
+- name: Wait for Redis to be healthy
+  shell: docker exec redis-cache redis-cli ping
+  register: redis_health
+  until: redis_health.stdout == "PONG"
+  retries: 6
+  delay: 5
+
+- name: Wait for MCP server to respond
+  uri:
+    url: "http://localhost:{{ mcp_port }}/health"
+    status_code: 200
+  register: mcp_health
+  until: mcp_health.status == 200
+  retries: 12
+  delay: 10
+  ignore_errors: yes
+
+- name: Display MCP health status
+  debug:
+    msg: "MCP Server: {{ mcp_health.json | default('still starting...') }}"
+  when: mcp_health is defined

@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "mcp-server"
+    metrics_path: "/health"
+    static_configs:
+      - targets: ["{{ ct_ip }}:{{ mcp_port }}"]
+        labels:
+          service: "obsidian-mcp"
+
+  - job_name: "nginx"
+    static_configs:
+      - targets: ["{{ ct_ip }}:{{ nginx_port }}"]
+        labels:
+          service: "nginx-gateway"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

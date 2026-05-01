@@ -1,0 +1,14 @@
+﻿# Sensitive credentials
+inventory.yml
+
+# IDE settings
+.claude/
+.vscode/
+
+# Generated artifacts
+ARTIFACTS_README.md
+
+# Local install scripts (contain environment-specific paths)
+*.sh
+install-*.py
+create-ansible-playbook.py
