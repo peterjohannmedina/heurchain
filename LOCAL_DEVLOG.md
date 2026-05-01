@@ -2,7 +2,48 @@
 
 ---
 
-## (pending commit) — feat(second-brain): add heurchain_search MCP tool
+## d24037f — feat(heurchain): add per-agent session namespacing
+
+**Date:** 2026-05-01  
+**Context:** HeurChain had no way for agents to identify their own memory across sessions. Any key written by any agent landed in the shared keyspace with no attribution. This commit adds a full session lifecycle API so agents can start a named session, write scoped working memory, persist important entries to longterm, and recall all prior context on restart.
+
+### New key schema
+
+| Key pattern | Tier | Contents |
+|-------------|------|---------|
+| `session:{id}` | longterm (Redis) | JSON session metadata |
+| `agent:{name}:sessions` | Redis SET | All session IDs for an agent |
+| `memory:agent:{name}:{sid}:{key}` | working (Ori vault) | Session-scoped working memory |
+| `doc:agent:{name}:{key}` | longterm (Redis + Obsidian) | Persistent agent documents |
+
+### New endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/session/start` | Create session, return `session_id` |
+| POST | `/session/end` | Mark ended, attach optional summary |
+| GET | `/session/{id}` | Fetch session metadata |
+| GET | `/session/{id}/context` | All working + longterm memory for session |
+| GET | `/agent/{name}/sessions` | All sessions newest-first |
+| GET | `/agent/{name}/recall` | Most-recent session context (session restore) |
+| POST | `/agent/store` | Write with auto namespacing; `persist=true` also writes to longterm |
+
+### `main.py` changes
+
+- `import uuid` added
+- `LONGTERM_PREFIXES` extended with `"session:"` (session metadata is long-lived)
+- Helpers: `_make_session_id`, `_agent_session_key`, `_agent_persistent_key`
+- Models: `SessionStartRequest`, `SessionEndRequest`, `AgentStoreRequest`
+
+### Deployment
+
+Deployed to `/opt/memory-broker/main.py` on CT 203, service restarted. Smoke-tested all 6 new endpoints — session create → agent store → session context → recall → sessions list → session end all returning expected shapes.
+
+**HeurChain commit:** `d24037f` in `heurchain-backup` repo.
+
+---
+
+## cdaa495 — feat(second-brain): add heurchain_search MCP tool
 
 **Date:** 2026-05-01  
 **Context:** `obsidian_search_notes` does a naive case-insensitive substring walk across the Obsidian vault filesystem. HeurChain runs a BM25 in-memory index across the full 460+ key Redis store with ranked scoring — a strictly better search surface for agent knowledge retrieval. Adding `heurchain_search` as an MCP tool proxies directly to HeurChain's `/search` endpoint so Claude Code agents use ranked retrieval instead of string matching.
