@@ -1,6 +1,6 @@
 ---
-- name: Deploy Memory Stack (HeurChain + Second-Brain MCP) on CT 203
-  hosts: ct203
+- name: Deploy HeurChain Memory Stack
+  hosts: all
   gather_facts: true
   become: yes
 

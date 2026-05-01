@@ -36,13 +36,13 @@
     mode: "0644"
 
 - name: Pull Docker images
-  ansible.builtin.command: docker-compose pull
+  ansible.builtin.command: docker-compose -p {{ mcp_network_name }} pull
   args:
     chdir: "{{ mcp_deploy_path }}"
   changed_when: true
 
 - name: Start Docker stack
-  ansible.builtin.command: docker-compose up -d
+  ansible.builtin.command: docker-compose -p {{ mcp_network_name }} up -d
   args:
     chdir: "{{ mcp_deploy_path }}"
   changed_when: true

@@ -8,7 +8,7 @@
   ansible.builtin.lineinfile:
     path: /etc/redis/redis.conf
     regexp: '^bind '
-    line: "bind 127.0.0.1 -::1 {{ redis_compose_gw }} {{ redis_docker0_gw }}"
+    line: "bind 127.0.0.1 {{ redis_docker0_gw }}"
   notify: Restart redis-server
 
 - name: Disable Redis protected mode
@@ -17,6 +17,9 @@
     regexp: '^protected-mode '
     line: "protected-mode no"
   notify: Restart redis-server
+
+- name: Flush handlers to apply config before verification
+  ansible.builtin.meta: flush_handlers
 
 - name: Ensure redis-server is running and enabled
   ansible.builtin.service:
@@ -30,8 +33,8 @@
   changed_when: false
   failed_when: redis_ping.stdout != "PONG"
 
-- name: Verify Redis is reachable on compose gateway
-  ansible.builtin.command: redis-cli -h {{ redis_compose_gw }} ping
-  register: redis_ping_compose
+- name: Verify Redis is reachable on docker0 gateway
+  ansible.builtin.command: redis-cli -h {{ redis_docker0_gw }} ping
+  register: redis_ping_docker0
   changed_when: false
-  failed_when: redis_ping_compose.stdout != "PONG"
+  failed_when: redis_ping_docker0.stdout != "PONG"

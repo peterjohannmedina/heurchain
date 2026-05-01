@@ -28,7 +28,7 @@
 
 - name: Remove Prometheus on wrong network
   ansible.builtin.shell: docker rm -f prometheus
-  when: prom_network.stdout != '{}' and '{{ mcp_network_name }}_default' not in prom_network.stdout
+  when: prom_network.stdout != '{}' and (mcp_network_name + '_default') not in prom_network.stdout
 
 - name: Check if Prometheus container exists
   ansible.builtin.shell: docker ps -a --filter name=^prometheus$ --format '{{ '{{' }}.Names{{ '}}' }}'
@@ -53,7 +53,7 @@
 
 - name: Remove Grafana on wrong network
   ansible.builtin.shell: docker rm -f grafana
-  when: grafana_network.stdout != '{}' and '{{ mcp_network_name }}_default' not in grafana_network.stdout
+  when: grafana_network.stdout != '{}' and (mcp_network_name + '_default') not in grafana_network.stdout
 
 - name: Check if Grafana container exists
   ansible.builtin.shell: docker ps -a --filter name=^grafana$ --format '{{ '{{' }}.Names{{ '}}' }}'
