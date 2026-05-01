@@ -5,6 +5,46 @@ Edit this file with each commit — one entry per commit, newest at top.
 
 ---
 
+## 15db9da — feat(ansible): add system-redis role — manage Redis bind and protected-mode
+
+**Date:** 2026-05-01  
+**Context:** The Redis config changes from `147ed2d` (bind IPs, protected-mode) were applied manually on CT 203 and not managed by Ansible. A fresh `ansible-playbook` run would deploy the Docker stack pointing at system Redis but leave Redis misconfigured if the host was ever reprovisioned. This commit closes that gap.
+
+### New role: `roles/system-redis`
+
+**`tasks/main.yml`**
+| Task | Module | What it does |
+|------|--------|-------------|
+| Ensure redis-server is installed | `ansible.builtin.package` | Idempotent install |
+| Configure Redis bind addresses | `ansible.builtin.lineinfile` | Replaces `^bind ` line with loopback + `{{ redis_compose_gw }}` + `{{ redis_docker0_gw }}` |
+| Disable Redis protected mode | `ansible.builtin.lineinfile` | Sets `protected-mode no` |
+| Ensure redis-server running + enabled | `ansible.builtin.service` | Starts and enables on boot |
+| Verify Redis on loopback | `ansible.builtin.command` | `redis-cli ping` — fails playbook if not PONG |
+| Verify Redis on compose gateway | `ansible.builtin.command` | `redis-cli -h {{ redis_compose_gw }} ping` — confirms containers can reach it |
+
+**`handlers/main.yml`**: `Restart redis-server` — triggers on either `lineinfile` config change.
+
+### `playbook.yml` changes
+
+- `system-redis` role inserted **before** `docker-stack` with `tags: [docker, system-redis]`
+  — running `--tags docker` automatically applies Redis config before deploying the stack
+- Fixed stale `redis_port` in deployment summary → replaced with human-readable line noting system Redis is shared with HeurChain
+
+### `inventory.yml` changes
+
+Added two explicit gateway vars (with inline comments explaining both are needed):
+```yaml
+redis_docker0_gw: "172.17.0.1"   # docker0 bridge; what host-gateway resolves to inside containers
+redis_compose_gw: "172.19.0.1"   # second-brain-mcp_default network gateway
+```
+
+### Idempotency check
+
+`ansible-playbook --tags system-redis --check` → 5 ok, 0 changed on the live host.
+The two verify tasks skip in check mode (expected — command tasks don't have a check-mode implementation).
+
+---
+
 ## 147ed2d — feat(ansible): wire second-brain MCP to shared system Redis (HeurChain)
 
 **Date:** 2026-05-01  
