@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""
+HeurChain Consolidation Worker
+Runs on CT 203, calls CaClaw Ollama for compression.
+Watches Ori vault for aging notes, compresses them into cues, migrates to longterm.
+"""
+
+import os
+import time
+import httpx
+import json
+import re
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+# Configuration
+BROKER_URL = os.getenv("BROKER_URL", "http://localhost:3012")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://{{ caClaw_ip }}:11434/api/generate")
+MODEL = os.getenv("COMPRESSOR_MODEL", "{{ compressor_model }}")
+VAULT_PATH = os.getenv("ORI_VAULT_PATH", "/mnt/pvet630/openclaw/ori-vault/notes")
+SELF_PATH = os.getenv("ORI_SELF_PATH", "/mnt/pvet630/openclaw/ori-vault/self")
+DECAY_DAYS = int(os.getenv("DECAY_DAYS", "7"))
+POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "3600"))
+
+# The HeurChain compression prompt
+COMPRESSION_PROMPT = """Compress this note into 5-15 tokens that would uniquely retrieve it.
+Prioritize: product codes, proper nouns, specific numbers, technical terms.
+Avoid: generic descriptions, function words, obvious categories.
+
+Note:
+{content}
+
+Cue:
+"""
+
+# Logging
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
+logger = logging.getLogger("consolidation")
+
+
+def parse_frontmatter(raw: str) -> tuple[dict, str]:
+    """Split an Ori vault file into (metadata, body)."""
+    if not raw.startswith("---"):
+        return {}, raw
+    parts = raw.split("---", 2)
+    if len(parts) < 3:
+        return {}, raw
+    meta = {}
+    for line in parts[1].splitlines():
+        line = line.strip()
+        if not line or ":" not in line:
+            continue
+        key, _, val = line.partition(":")
+        meta[key.strip()] = val.strip()
+    return meta, parts[2].strip()
+
+
+def build_frontmatter(key: str, tags: list[str] | None = None, source: str | None = None) -> str:
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    lines = ["---", f"key: {key}", f"updated_at: {now}"]
+    if tags:
+        lines.append(f"tags: [{', '.join(tags)}]")
+    if source:
+        lines.append(f"source: {source}")
+    lines.append("---")
+    return "\n".join(lines) + "\n\n"
+
+
+def list_vault_files(vault_dir: str) -> list[tuple[str, str]]:
+    """Yield (filepath, key) for all .md files in vault."""
+    results = []
+    for root, _dirs, files in os.walk(vault_dir):
+        for f in files:
+            if f.endswith(".md"):
+                filepath = os.path.join(root, f)
+                key = f.replace("_", ":").replace(".md", "")
+                results.append((filepath, key))
+    return results
+
+
+def should_consolidate(meta: dict) -> bool:
+    """Check if note is old enough to consolidate and not already consolidated."""
+    if meta.get("consolidated") == "true":
+        return False
+    updated_str = meta.get("updated_at", "")
+    if not updated_str:
+        return False
+    try:
+        updated = datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+        age = datetime.now(timezone.utc) - updated
+        return age >= timedelta(days=DECAY_DAYS)
+    except ValueError:
+        return False
+
+
+def compress_content(content: str) -> str | None:
+    """Call Ollama compressor with temp 0.1."""
+    prompt = COMPRESSION_PROMPT.format(content=content[:3000])  # safety cap
+    try:
+        resp = httpx.post(OLLAMA_URL, json={
+            "model": MODEL,
+            "prompt": prompt,
+            "options": {
+                "temperature": 0.1,
+                "num_predict": 30,
+                "num_ctx": 4096,
+            },
+            "stream": False,
+        }, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        cue = data.get("response", "").strip().split("\n")[0]
+        # Clean up: remove quotes, brackets, extra punctuation
+        cue = re.sub(r'^[\'"\s]+|[\'"\s]+$', '', cue)
+        if len(cue.split()) < 3:
+            logger.warning(f"Cue too short: '{cue}'")
+            return None
+        return cue
+    except Exception as e:
+        logger.error(f"Compression failed: {e}")
+        return None
+
+
+def promote_to_longterm(key: str, content: str, cue: str, tags: list[str] | None = None) -> bool:
+    """Move full content to longterm, write cue to working memory."""
+    try:
+        # Store full content in longterm
+        r1 = httpx.post(f"{BROKER_URL}/store", json={
+            "key": key,
+            "content": content,
+            "tier": "longterm",
+            "tags": tags or [],
+            "metadata": {"source": "consolidation-worker"},
+        }, timeout=30)
+        r1.raise_for_status()
+
+        # Store cue in working memory with wiki-link
+        cue_key = f"cue:{key}"
+        cue_content = f"{cue} [[tier2:{key}]]"
+        r2 = httpx.post(f"{BROKER_URL}/store", json={
+            "key": cue_key,
+            "content": cue_content,
+            "tier": "working",
+            "tags": ["cue", "consolidated"],
+            "metadata": {"source": "consolidation-worker", "parent_key": key},
+        }, timeout=30)
+        r2.raise_for_status()
+
+        logger.info(f"Promoted: {key} -> cue:'{cue}'")
+        return True
+    except Exception as e:
+        logger.error(f"Promotion failed for {key}: {e}")
+        return False
+
+
+def mark_consolidated(filepath: str, meta: dict, body: str) -> bool:
+    """Mark note as consolidated in frontmatter — preserves verbatim content on disk."""
+    try:
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        lines = ["---", f"key: {meta.get('key', '')}", f"updated_at: {now}"]
+        if meta.get("tags"):
+            lines.append(f"tags: {meta['tags']}")
+        if meta.get("source"):
+            lines.append(f"source: {meta['source']}")
+        lines.append("consolidated: true")
+        lines.append("---")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n\n" + body)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to mark {filepath} as consolidated: {e}")
+        return False
+
+
+def run_cycle() -> int:
+    """Scan vault, consolidate aging notes. Returns count processed."""
+    processed = 0
+    files = list_vault_files(VAULT_PATH)
+    logger.info(f"Scanning {len(files)} files in working memory")
+
+    for filepath, key in files:
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw = f.read()
+        except Exception as e:
+            logger.warning(f"Cannot read {filepath}: {e}")
+            continue
+
+        meta, body = parse_frontmatter(raw)
+        if not should_consolidate(meta):
+            continue
+
+        logger.info(f"Consolidating: {key} (last updated: {meta.get('updated_at')})")
+
+        cue = compress_content(body)
+        if not cue:
+            logger.warning(f"Skipping {key}: compression returned empty cue")
+            continue
+
+        tags_str = meta.get("tags", "")
+        tags = [t.strip() for t in tags_str.strip("[]").split(",") if t.strip()] if tags_str else []
+
+        if promote_to_longterm(key, body, cue, tags):
+            if mark_consolidated(filepath, meta, body):
+                processed += 1
+
+    return processed
+
+
+def main():
+    logger.info("Consolidation worker starting")
+    logger.info(f"Broker: {BROKER_URL}")
+    logger.info(f"Ollama: {OLLAMA_URL} (model={MODEL})")
+    logger.info(f"Vault: {VAULT_PATH}")
+    logger.info(f"Decay threshold: {DECAY_DAYS} days")
+
+    while True:
+        try:
+            count = run_cycle()
+            if count > 0:
+                logger.info(f"Cycle complete: {count} notes consolidated")
+            else:
+                logger.info("Cycle complete: nothing to consolidate")
+        except Exception as e:
+            logger.exception("Cycle failed")
+
+        logger.info(f"Sleeping {POLL_INTERVAL}s")
+        time.sleep(POLL_INTERVAL)
+
+
+if __name__ == "__main__":
+    main()
