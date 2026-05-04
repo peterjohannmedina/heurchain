@@ -1,17 +1,27 @@
 services:
+  redis-cache:
+    image: redis:7.2-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   heurchain-mcp:
     image: node:{{ node_version }}
     container_name: heurchain-mcp
     restart: unless-stopped
     security_opt:
       - apparmor:unconfined
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     ports:
       - "{{ mcp_port }}:{{ mcp_port }}"
     environment:
       - NODE_ENV=production
-      - REDIS_URL=redis://host.docker.internal:6379
+      - REDIS_URL=redis://redis-cache:6379
       - MCP_PORT={{ mcp_port }}
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
       - GRAFANA_USER={{ grafana_user }}
@@ -21,6 +31,9 @@ services:
       - "{{ obsidian_vault_path | default('/opt/obsidian-vault') }}:/obsidian-vault"
     working_dir: /app
     command: bash -c "npm install --omit=dev --silent 2>/dev/null && node server.js"
+    depends_on:
+      redis-cache:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "node -e \"const h=require('http');h.get('http://localhost:{{ mcp_port }}/health',r=>{process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))\""]
       interval: 15s
@@ -40,3 +53,6 @@ services:
       - "{{ mcp_deploy_path }}/nginx.conf:/etc/nginx/nginx.conf:ro"
     depends_on:
       - heurchain-mcp
+
+volumes:
+  redis-data:
