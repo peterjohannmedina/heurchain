@@ -1,5 +1,7 @@
 # HeurChain
 
+> **HeurChain** — short for **Heuristic Chaining** — describes the core design principle: knowledge is not stored in isolation but chained through heuristic reasoning, so that each piece of stored information reinforces and contextualizes what came before. The result is a memory system that improves its own recall accuracy over time, across every agent that writes to it.
+
 **One memory system. Every AI agent. Simultaneously.**
 
 HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kimi, Hermes, OpenClaw, ChatGPT, and any HTTP or MCP client share the same tiered knowledge store — BM25-ranked search, session continuity, and automatic tier promotion — without any agent-specific configuration beyond a URL and an interface choice.
