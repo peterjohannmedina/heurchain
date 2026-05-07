@@ -9,7 +9,8 @@
   "author": "Peter Medina <peter@carlssoncreative.com>",
   "files": [
     "server.js",
-    "AGENT_CONFIG.json"
+    "AGENT_CONFIG.json",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "mcp",
