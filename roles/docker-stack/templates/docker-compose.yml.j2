@@ -23,6 +23,7 @@ services:
       - NODE_ENV=production
       - REDIS_URL=redis://redis-cache:6379
       - MCP_PORT={{ mcp_port }}
+      - MCP_AUTH_TOKEN={{ mcp_auth_token | default('') }}
       - OBSIDIAN_VAULT_PATH=/obsidian-vault
       - GRAFANA_USER={{ grafana_user }}
       - GRAFANA_PASSWORD={{ grafana_password }}
