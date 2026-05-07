@@ -21,6 +21,20 @@ const BUFFER_FLUSH_MS        = parseInt(process.env.BUFFER_FLUSH_MS, 10)        
 const SESSION_CONTEXT_TOKENS = parseInt(process.env.SESSION_CONTEXT_TOKENS, 10) || 400;
 const PROC_KEY_RE            = /^[a-zA-Z0-9_\-\.]+$/; // safe proc key segment
 
+// M2: Ollama-first compressor provider chain
+const COMPRESSOR_PROVIDER        = process.env.COMPRESSOR_PROVIDER     || (process.env.OLLAMA_BASE_URL ? "ollama" : process.env.ANTHROPIC_API_KEY ? "anthropic" : "none");
+const COMPRESSOR_OLLAMA_MODEL    = process.env.COMPRESSOR_OLLAMA_MODEL || "qwen2.5:1.5b";
+const COMPRESSOR_ANTHROPIC_MODEL = process.env.COMPRESSOR_MODEL        || "claude-haiku-4-5-20251001";
+const OLLAMA_BASE_URL            = process.env.OLLAMA_BASE_URL          || "http://localhost:11434";
+const COMPRESSOR_API_KEY         = process.env.ANTHROPIC_API_KEY        || process.env.COMPRESSOR_API_KEY || null;
+
+// M3: Proactive memory briefing worker
+const BRIEFING_ENABLED         = process.env.BRIEFING_ENABLED !== "false";
+const BRIEFING_INTERVAL_MS     = parseInt(process.env.BRIEFING_INTERVAL_MS, 10) || 6 * 60 * 60 * 1000;
+const BRIEFING_MAX_AGE_MS      = parseInt(process.env.BRIEFING_MAX_AGE_HOURS,  10) * 60 * 60 * 1000 || 6 * 60 * 60 * 1000;
+const BRIEFING_MAX_ITEMS       = parseInt(process.env.BRIEFING_MAX_ITEMS, 10)  || 5;
+const BRIEFING_INSTRUCTIONS    = process.env.BRIEFING_INSTRUCTIONS             || "";
+
 // node-redis scanIterator yields pages (arrays) in some versions and individual
 // keys in others. scanKeys normalizes to individual key strings in all cases.
 async function* scanKeys(pattern, type) {
@@ -266,6 +280,171 @@ async function procGet(agentName) {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// M2: Ollama-first compressor provider chain
+// ---------------------------------------------------------------------------
+
+async function runCompressor(content, task = "cue") {
+  const truncated = String(content).slice(0, 1200);
+
+  const PROMPTS = {
+    cue: `Compress this note into 5-15 tokens that would uniquely retrieve it later.\nPrioritize: product codes, proper nouns, specific numbers, technical terms.\nAvoid: generic descriptions, function words, obvious categories.\nOutput only the compressed tokens, nothing else.\n\nNote:\n${truncated}\n\nCompressed:`,
+    briefing: `Based on these memory entries, generate 3-5 specific memory reminders for an AI agent starting a new session.\nEach reminder must be concrete and specific (not generic).\nReturn ONLY a JSON array of short strings, max 15 words each. No explanation.\n\nEntries:\n${truncated}\n\nJSON array:`,
+  };
+
+  const prompt = PROMPTS[task] || PROMPTS.cue;
+
+  if (COMPRESSOR_PROVIDER === "ollama") {
+    try {
+      const res = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: COMPRESSOR_OLLAMA_MODEL, prompt, stream: false, options: { temperature: 0.1 } }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!res.ok) throw new Error(`Ollama ${res.status}`);
+      const j = await res.json();
+      return j.response?.trim() ?? null;
+    } catch (e) {
+      console.error("[compressor] ollama failed:", e.message);
+      return null;
+    }
+  }
+
+  if (COMPRESSOR_PROVIDER === "anthropic" && COMPRESSOR_API_KEY) {
+    try {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic({ apiKey: COMPRESSOR_API_KEY });
+      const msg = await client.messages.create({
+        model: COMPRESSOR_ANTHROPIC_MODEL,
+        max_tokens: 128,
+        temperature: 0.1,
+        messages: [{ role: "user", content: prompt }],
+      });
+      return msg.content[0]?.text?.trim() ?? null;
+    } catch (e) {
+      console.error("[compressor] anthropic failed:", e.message);
+      return null;
+    }
+  }
+
+  return null; // COMPRESSOR_PROVIDER=none or no credentials
+}
+
+// ---------------------------------------------------------------------------
+// M3: Proactive memory briefing worker
+// ---------------------------------------------------------------------------
+
+function briefingKey(agentName)   { return `briefing:${agentName}:latest`; }
+function briefingTsKey(agentName) { return `briefing:${agentName}:generated_at`; }
+
+async function discoverAgents() {
+  const agents = new Set();
+  for await (const k of scanKeys("proc:agent:*")) {
+    // key pattern: proc:agent:{name}:{field}
+    const parts = k.split(":");
+    if (parts.length >= 3) agents.add(parts[2]);
+  }
+  return [...agents];
+}
+
+async function generateBriefing(agentName) {
+  // Check opt-out
+  const disabled = await redis.get(procKey(agentName, "briefing_disabled"));
+  if (disabled === "true") return null;
+
+  // Collect proc entries
+  const procEntries = [];
+  for await (const k of scanKeys(`proc:agent:${agentName}:*`)) {
+    const field = k.split(":").slice(3).join(":");
+    // Skip internal briefing control keys
+    if (["briefing_disabled", "briefing_interval_ms", "briefing_instructions"].includes(field)) continue;
+    const val = await redis.get(k);
+    if (val) procEntries.push(`${field}: ${val}`);
+  }
+
+  // Collect last session buffer (most recent flushed session)
+  const sessionTurns = [];
+  const sessionKeys = [];
+  for await (const k of scanKeys("session:*:buffer")) sessionKeys.push(k);
+  if (sessionKeys.length) {
+    // Sort by key name descending to get most recent
+    sessionKeys.sort().reverse();
+    try {
+      const raw = await redis.get(sessionKeys[0]);
+      const turns = JSON.parse(raw || "[]");
+      for (const t of turns.slice(-6)) {
+        if (t.content) sessionTurns.push(String(t.content).slice(0, 120));
+      }
+    } catch {}
+  }
+
+  const allEntries = [...procEntries, ...sessionTurns];
+  if (!allEntries.length) return null;
+
+  // Try LLM synthesis first
+  if (COMPRESSOR_PROVIDER !== "none") {
+    const context = allEntries.join("\n");
+    const raw = await runCompressor(context, "briefing");
+    if (raw) {
+      try {
+        let items = JSON.parse(raw);
+        if (Array.isArray(items)) {
+          items = items.slice(0, BRIEFING_MAX_ITEMS).map(s => `HeurChain: ${String(s).trim()}`);
+          return items;
+        }
+      } catch {}
+      // LLM returned non-JSON — use as single item
+      return [`HeurChain: ${raw.slice(0, 120)}`];
+    }
+  }
+
+  // Raw fallback — format proc entries and recent session turns directly
+  const items = [];
+  for (const entry of procEntries.slice(0, 3)) {
+    items.push(`HeurChain: ${entry}`);
+  }
+  for (const turn of sessionTurns.slice(0, 2)) {
+    items.push(`HeurChain: ${turn.slice(0, 100)}`);
+  }
+  return items.slice(0, BRIEFING_MAX_ITEMS);
+}
+
+let isBriefing = false;
+
+async function runProactiveBriefings() {
+  if (!BRIEFING_ENABLED || isBriefing) return;
+  isBriefing = true;
+  try {
+    const agents = await discoverAgents();
+    for (const agentName of agents) {
+      try {
+        // Check per-agent interval override
+        const intervalOverride = await redis.get(procKey(agentName, "briefing_interval_ms"));
+        const agentInterval = intervalOverride ? parseInt(intervalOverride, 10) : BRIEFING_INTERVAL_MS;
+
+        // Check if briefing is still fresh for this agent's interval
+        const tsRaw = await redis.get(briefingTsKey(agentName));
+        if (tsRaw) {
+          const age = Date.now() - parseInt(tsRaw, 10);
+          if (age < agentInterval) continue; // not yet due
+        }
+
+        const items = await generateBriefing(agentName);
+        if (items && items.length) {
+          await redis.setEx(briefingKey(agentName), 24 * 60 * 60, JSON.stringify(items));
+          await redis.set(briefingTsKey(agentName), String(Date.now()));
+          console.log(`[briefing] agent=${agentName} items=${items.length} provider=${COMPRESSOR_PROVIDER}`);
+        }
+      } catch (e) {
+        console.error(`[briefing] failed for agent ${agentName}:`, e.message);
+      }
+    }
+  } finally {
+    isBriefing = false;
+  }
+}
+
 // Pending-ops queue: writes/removes that occur during a rebuild are applied
 // after the swap so they aren't silently discarded — fix #4
 let isBuilding = false;
@@ -426,7 +605,7 @@ async function listObsidian(prefix) {
 // ---------------------------------------------------------------------------
 
 function createMcpServerInstance(profile = "full") {
-  const server = new McpServer({ name: "heurchain-mcp", version: "1.3.0" });
+  const server = new McpServer({ name: "heurchain-mcp", version: "1.4.0" });
 
   // --- Cache Tools ---
 
@@ -1139,7 +1318,26 @@ app.get("/api/session-context", requireAuth, async (req, res) => {
     } catch {}
   }
 
-  res.json({ proc, last_session, relevant });
+  // 4. Briefing field (M3)
+  let briefing = null;
+  if (BRIEFING_ENABLED) {
+    const tsRaw = await redis.get(briefingTsKey(agent));
+    if (tsRaw && (Date.now() - parseInt(tsRaw, 10)) < BRIEFING_MAX_AGE_MS) {
+      try {
+        briefing = JSON.parse(await redis.get(briefingKey(agent)) || "null");
+      } catch {}
+    } else {
+      // Stale or missing — trigger async regen, return null this call
+      runProactiveBriefings().catch(() => {});
+    }
+    // Prepend per-agent instructions if set
+    const agentInstructions = await redis.get(procKey(agent, "briefing_instructions")) || BRIEFING_INSTRUCTIONS;
+    if (briefing && agentInstructions) {
+      briefing = [agentInstructions, ...briefing];
+    }
+  }
+
+  res.json({ proc, last_session, relevant, briefing });
 });
 
 // ---------------------------------------------------------------------------
@@ -1156,6 +1354,12 @@ app.get("/api/session-context", requireAuth, async (req, res) => {
       await flushBuffer(sessionId).catch(() => {});
     }
   }, BUFFER_FLUSH_MS);
+  if (BRIEFING_ENABLED) {
+    // Fire once at startup after 30s warmup, then on interval
+    setTimeout(() => runProactiveBriefings().catch(e => console.error("[briefing] startup run failed:", e.message)), 30_000);
+    setInterval(() => runProactiveBriefings().catch(() => {}), BRIEFING_INTERVAL_MS);
+    console.log(`[heurchain] briefing worker: interval=${BRIEFING_INTERVAL_MS}ms provider=${COMPRESSOR_PROVIDER}`);
+  }
   const port = parseInt(process.env.MCP_PORT, 10) || 3010;
-  app.listen(port, () => console.log(`HeurChain MCP v1.3.0 listening on port ${port} — ${bm25.size} docs indexed`));
+  app.listen(port, () => console.log(`HeurChain MCP v1.4.0 listening on port ${port} — ${bm25.size} docs indexed`));
 })();
