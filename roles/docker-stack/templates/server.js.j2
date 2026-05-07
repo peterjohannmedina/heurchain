@@ -228,8 +228,12 @@ async function buildIndex() {
   // Scan Redis — use TYPE: "string" to skip hashes/lists/sets
   try {
     for await (const key of redis.scanIterator({ MATCH: "*", COUNT: 200, TYPE: "string" })) {
-      const val = await redis.get(key);
-      if (val) entries.push({ key, content: val, tier: "longterm", updatedAt: null });
+      try {
+        const val = await redis.get(key);
+        if (val) entries.push({ key, content: val, tier: "longterm", updatedAt: null });
+      } catch (e) {
+        console.warn(`Index build — skipping key '${key}': ${e.message}`);
+      }
     }
   } catch (e) {
     console.error("Index build — Redis scan error:", e.message);
