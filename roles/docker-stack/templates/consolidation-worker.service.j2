@@ -1,0 +1,29 @@
+[Unit]
+Description=HeurChain Consolidation Worker
+Documentation=https://github.com/peterjohannmedina/heurchain
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 {{ mcp_deploy_path }}/app/consolidation-worker.py
+WorkingDirectory={{ mcp_deploy_path }}/app
+Restart=always
+RestartSec=30
+User=root
+
+Environment=BROKER_URL=http://localhost:3012
+Environment=OLLAMA_URL=http://{{ caClaw_ip }}:11434/api/generate
+Environment=COMPRESSOR_MODEL={{ compressor_model }}
+Environment=ORI_VAULT_PATH=/mnt/pvet630/openclaw/ori-vault/notes
+Environment=ORI_SELF_PATH=/mnt/pvet630/openclaw/ori-vault/self
+Environment=DECAY_DAYS=7
+Environment=POLL_INTERVAL=3600
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=consolidation-worker
+
+[Install]
+WantedBy=multi-user.target
