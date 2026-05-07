@@ -1,5 +1,41 @@
 # HeurChain Changelog
 
+## v1.4.1 — 2026-05-07
+
+### Architecture
+
+- **Briefing worker is pure memory delivery — no inference.** HeurChain is a memory substrate. The briefing worker assembles raw proc entries and session turns; it never calls an LLM. The receiving agent decides whether to surface items, query deeper via `heurchain_search`, or synthesize with its own model.
+- `runCompressor` remains for consolidation cue compression only (background worker, separate concern).
+
+### Changes
+
+- Removed LLM synthesis path from `generateBriefing()`. Raw proc + session items IS the correct output, not a fallback.
+- Default `BRIEFING_INTERVAL_MS` changed from 6 hours → 24 hours (daily cadence).
+- Added optional webhook push: set proc key `briefing_webhook_url` for an agent and the worker will POST `{ agent, timestamp, items }` to that URL after each briefing generation (fire-and-forget, 10s timeout). Agent's orchestration layer handles the payload independently.
+
+---
+
+## v1.4.0 — 2026-05-07
+
+### New: Ollama-first compressor provider chain
+
+- `COMPRESSOR_PROVIDER`: `ollama` (default when `OLLAMA_BASE_URL` is set) | `anthropic` | `none`
+- Ollama default model: `qwen2.5:1.5b` — runs on CPU, ~1 GB RAM, no GPU or external API required
+- `anthropic` provider optional — requires `ANTHROPIC_API_KEY`
+- `none` provider: consolidation still fires, marks keys consolidated, skips cue generation
+- Removes hard dependency on external API for self-hosted deployments
+
+### New: Proactive memory briefing worker
+
+- `runProactiveBriefings()` runs on `BRIEFING_INTERVAL_MS` schedule (default 24h) plus once 30s after startup
+- Discovers active agents by scanning `proc:agent:*` keys
+- Assembles `"HeurChain: {item}"` reminders from proc memory and recent session buffer turns
+- Caches result at `briefing:{agent}:latest` (Redis, 24h TTL)
+- `/api/session-context` now returns a `briefing` field — pre-generated reminders ready at session start with zero added latency (cache hit path)
+- Per-agent controls via proc keys: `briefing_disabled`, `briefing_interval_ms`, `briefing_instructions`, `briefing_webhook_url`
+
+---
+
 ## v1.3.0 — 2026-05-07
 
 ### New: Frictionless REST layer
