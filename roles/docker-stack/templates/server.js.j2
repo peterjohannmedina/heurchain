@@ -16,6 +16,22 @@ redis.on("error", (err) => console.error("Redis error:", err));
 const OBSIDIAN_VAULT_PATH = path.resolve(process.env.OBSIDIAN_VAULT_PATH || "/opt/obsidian-vault");
 const VAULT_ROOT = OBSIDIAN_VAULT_PATH + path.sep;
 
+const BUFFER_CAPACITY        = parseInt(process.env.BUFFER_CAPACITY, 10)        || 50;
+const BUFFER_FLUSH_MS        = parseInt(process.env.BUFFER_FLUSH_MS, 10)        || 5 * 60 * 1000; // 5 min
+const SESSION_CONTEXT_TOKENS = parseInt(process.env.SESSION_CONTEXT_TOKENS, 10) || 400;
+const PROC_KEY_RE            = /^[a-zA-Z0-9_\-\.]+$/; // safe proc key segment
+
+// node-redis scanIterator yields pages (arrays) in some versions and individual
+// keys in others. scanKeys normalizes to individual key strings in all cases.
+async function* scanKeys(pattern, type) {
+  const opts = { MATCH: pattern, COUNT: 200 };
+  if (type) opts.TYPE = type;
+  for await (const item of redis.scanIterator(opts)) {
+    if (Array.isArray(item)) { for (const k of item) yield k; }
+    else yield item;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Auth middleware — set MCP_AUTH_TOKEN env var to enforce bearer token auth.
 // If unset, access is unrestricted (warn loudly).
@@ -199,6 +215,57 @@ class BM25Index {
 
 const bm25 = new BM25Index();
 
+// ---------------------------------------------------------------------------
+// Session buffer — ambient turn capture without explicit agent store calls.
+// Agents POST to /api/buffer fire-and-forget; buffer auto-flushes to Redis.
+// ---------------------------------------------------------------------------
+
+const sessionBuffers = new Map(); // session_id -> [{ role, content, agent, ts }]
+
+async function flushBuffer(sessionId) {
+  const buf = sessionBuffers.get(sessionId);
+  if (!buf || buf.length === 0) return;
+  const key = `session:${sessionId}:buffer`;
+  try {
+    const existing = await redis.get(key);
+    const prev = existing ? JSON.parse(existing) : [];
+    await redis.setEx(key, 7 * 24 * 60 * 60, JSON.stringify([...prev, ...buf]));
+    sessionBuffers.set(sessionId, []);
+  } catch (e) {
+    console.error(`Buffer flush error session ${sessionId}:`, e.message);
+  }
+}
+
+function bufferAppend(sessionId, agentName, role, content) {
+  if (!sessionBuffers.has(sessionId)) sessionBuffers.set(sessionId, []);
+  const buf = sessionBuffers.get(sessionId);
+  buf.push({ role: role || "user", content, agent: agentName || "unknown", ts: new Date().toISOString() });
+  if (buf.length >= BUFFER_CAPACITY) flushBuffer(sessionId).catch(() => {});
+}
+
+// ---------------------------------------------------------------------------
+// Procedural memory — stable agent preferences/style knobs, no TTL/decay.
+// Redis namespace: proc:agent:{name}:{key}
+// ---------------------------------------------------------------------------
+
+function procKey(agentName, key) {
+  if (!PROC_KEY_RE.test(agentName)) throw new Error("invalid agent_name");
+  if (!PROC_KEY_RE.test(key))       throw new Error("invalid proc key");
+  return `proc:agent:${agentName}:${key}`;
+}
+
+async function procGet(agentName) {
+  const prefix = `proc:agent:${agentName}:`;
+  const result = {};
+  for await (const k of scanKeys(`${prefix}*`, "string")) {
+    const val = await redis.get(k);
+    if (!val) continue;
+    const shortKey = k.slice(prefix.length);
+    try { result[shortKey] = JSON.parse(val); } catch { result[shortKey] = val; }
+  }
+  return result;
+}
+
 // Pending-ops queue: writes/removes that occur during a rebuild are applied
 // after the swap so they aren't silently discarded — fix #4
 let isBuilding = false;
@@ -225,9 +292,9 @@ async function buildIndex() {
 
   const entries = [];
 
-  // Scan Redis — use TYPE: "string" to skip hashes/lists/sets
+  // Scan Redis — scanKeys normalizes page/individual yields from scanIterator
   try {
-    for await (const key of redis.scanIterator({ MATCH: "*", COUNT: 200, TYPE: "string" })) {
+    for await (const key of scanKeys("*", "string")) {
       try {
         const val = await redis.get(key);
         if (val) entries.push({ key, content: val, tier: "longterm", updatedAt: null });
@@ -358,8 +425,8 @@ async function listObsidian(prefix) {
 // MCP server factory
 // ---------------------------------------------------------------------------
 
-function createMcpServerInstance() {
-  const server = new McpServer({ name: "heurchain-mcp", version: "1.2.1" });
+function createMcpServerInstance(profile = "full") {
+  const server = new McpServer({ name: "heurchain-mcp", version: "1.3.0" });
 
   // --- Cache Tools ---
 
@@ -541,7 +608,7 @@ function createMcpServerInstance() {
   }, async ({ prefix, overwrite }) => {
     let exported = 0, skipped = 0, errors = 0;
     try {
-      for await (const key of redis.scanIterator({ MATCH: prefix ? `${prefix}*` : "*", COUNT: 100, TYPE: "string" })) {
+      for await (const key of scanKeys(prefix ? `${prefix}*` : "*", "string")) {
         // skip keys that would fail path validation
         try { validateKey(key); } catch { skipped++; continue; }
         const val = await redis.get(key);
@@ -571,6 +638,38 @@ function createMcpServerInstance() {
       return { content: [{ type: "text", text: JSON.stringify({ error: "export failed", exported, skipped, errors }) }] };
     }
   });
+
+  // --- Procedural Memory Tools ---
+
+  server.tool("proc_set",
+    "Store a stable agent preference or style knob in procedural memory. These persist indefinitely across sessions — no TTL, no decay. Use for learned behaviors, coding style, user preferences.", {
+    agent_name: z.string().describe("Agent identifier (e.g. 'claude-code', 'hermes')"),
+    key:        z.string().describe("Preference name (alphanumeric, hyphens, underscores — e.g. 'coding_style')"),
+    value:      z.string().describe("Preference value")
+  }, async ({ agent_name, key, value }) => {
+    try {
+      const rk = procKey(agent_name, key);
+      await redis.set(rk, value);
+      return { content: [{ type: "text", text: JSON.stringify({ stored: true, key: rk }) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: JSON.stringify({ stored: false, error: e.message }) }] };
+    }
+  });
+
+  server.tool("proc_get",
+    "Read all procedural memory knobs for an agent as compact JSON. Call once at session start and inject into system prompt — zero tool calls needed during the session.", {
+    agent_name: z.string().describe("Agent identifier")
+  }, async ({ agent_name }) => {
+    try {
+      const result = await procGet(agent_name);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    } catch (e) {
+      return { content: [{ type: "text", text: JSON.stringify({ error: e.message }) }] };
+    }
+  });
+
+  // --- Infrastructure Tools (full profile only) ---
+  if (profile === "full") {
 
   // --- Prometheus Monitoring Tools ---
 
@@ -650,7 +749,7 @@ function createMcpServerInstance() {
 
   async function searchDocs(keyPattern, contentFilter) {
     const keys = [];
-    for await (const key of redis.scanIterator({ MATCH: keyPattern, COUNT: 100, TYPE: "string" })) keys.push(key);
+    for await (const key of scanKeys(keyPattern, "string")) keys.push(key);
     if (keys.length === 0) return [];
     const results = [];
     for (const key of keys) {
@@ -755,6 +854,8 @@ function createMcpServerInstance() {
     }) }] };
   });
 
+  } // end profile === "full"
+
   return server;
 }
 
@@ -769,8 +870,9 @@ app.get("/sse", requireAuth, async (req, res) => {
   if (Object.keys(transports).length >= MAX_SESSIONS) {
     return res.status(503).json({ error: "Max concurrent sessions reached" });
   }
+  const profile = req.query.profile === "slim" ? "slim" : "full";
   const transport = new SSEServerTransport("/messages", res);
-  const mcpServer = createMcpServerInstance();
+  const mcpServer = createMcpServerInstance(profile);
   const sessionId = transport.sessionId;
   transports[sessionId] = { transport, server: mcpServer };
 
@@ -819,18 +921,27 @@ app.get("/health", async (req, res) => {
 });
 
 app.get("/api/tools", requireAuth, (req, res) => {
-  res.json({ tools: [
+  const profile = req.query.profile === "slim" ? "slim" : "full";
+  const core = [
     "cache_set", "cache_get", "cache_delete", "redis_stats", "health_check",
     "obsidian_write_note", "obsidian_read_note", "obsidian_delete_note",
     "obsidian_search_notes", "obsidian_list_notes",
     "heurchain_search", "heurchain_export",
+    "proc_set", "proc_get"
+  ];
+  const infra = [
     "prometheus_get_targets", "prometheus_get_alerts", "prometheus_query",
     "grafana_get_health", "grafana_list_dashboards",
     "proxmox_get_cluster_status", "proxmox_list_nodes", "proxmox_find_vm",
     "ceph_get_health_status", "ceph_list_osd_notes",
     "network_search_docs", "network_get_runbook",
     "user_context_add_entry", "user_context_get_history", "user_context_search_history"
-  ]});
+  ];
+  res.json({
+    profile,
+    tools: profile === "slim" ? core : [...core, ...infra],
+    rest: ["/api/search", "/api/buffer", "/api/proc", "/api/session-context"]
+  });
 });
 
 app.post("/api/cache", requireAuth, jsonParser, async (req, res) => {
@@ -898,13 +1009,153 @@ app.get("/api/obsidian/search", requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// BM25 search REST — frictionless recall via curl/hook, no MCP tool overhead
+// ---------------------------------------------------------------------------
+
+app.get("/api/search", requireAuth, async (req, res) => {
+  const { q, limit, tier, minScore, namespace } = req.query;
+  if (!q) return res.status(400).json({ error: "q required" });
+  const results = bm25.search(q, {
+    limit:       Math.min(parseInt(limit) || 10, 50),
+    tier:        tier || "all",
+    minScore:    parseFloat(minScore) || 0,
+    noiseFilter: true,
+    namespace:   namespace || null
+  });
+  res.json({
+    count: results.length,
+    index_size: bm25.size,
+    results: results.map(r => ({
+      key:     r.key,
+      score:   Math.round(r.score * 1000) / 1000,
+      tier:    r.tier,
+      preview: (r.content || "").substring(0, 300)
+    }))
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Session buffer — ambient turn capture, POST fire-and-forget from agent hook
+// ---------------------------------------------------------------------------
+
+app.post("/api/buffer", requireAuth, jsonParser, async (req, res) => {
+  const { session_id, agent_name, role, content } = req.body;
+  if (!session_id || !content) return res.status(400).json({ error: "session_id and content required" });
+  bufferAppend(session_id, agent_name, role, content);
+  res.json({ buffered: true, session_id });
+});
+
+app.post("/api/buffer/flush", requireAuth, jsonParser, async (req, res) => {
+  const { session_id } = req.body;
+  if (!session_id) return res.status(400).json({ error: "session_id required" });
+  await flushBuffer(session_id);
+  res.json({ flushed: true, session_id });
+});
+
+// ---------------------------------------------------------------------------
+// Procedural memory REST — stable agent preference knobs, no TTL
+// ---------------------------------------------------------------------------
+
+app.post("/api/proc", requireAuth, jsonParser, async (req, res) => {
+  const { agent_name, key, value } = req.body;
+  if (!agent_name || !key || value === undefined) return res.status(400).json({ error: "agent_name, key, value required" });
+  try {
+    const rk = procKey(agent_name, key);
+    await redis.set(rk, typeof value === "string" ? value : JSON.stringify(value));
+    res.json({ stored: true, key: rk });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.get("/api/proc/:agent", requireAuth, async (req, res) => {
+  try {
+    if (!PROC_KEY_RE.test(req.params.agent)) return res.status(400).json({ error: "invalid agent name" });
+    res.json(await procGet(req.params.agent));
+  } catch (e) {
+    res.status(500).json({ error: "proc read failed" });
+  }
+});
+
+app.delete("/api/proc/:agent/:key", requireAuth, async (req, res) => {
+  try {
+    const rk = procKey(req.params.agent, req.params.key);
+    const deleted = await redis.del(rk);
+    res.json({ deleted: deleted > 0, key: rk });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Session-context injection — compact recall for system-prompt injection.
+// Returns proc knobs + last session summary + top BM25 hits, hard-capped at
+// SESSION_CONTEXT_TOKENS (~400 tokens). Call via hook at session start;
+// inject the JSON into system prompt. Zero MCP tool overhead.
+// ---------------------------------------------------------------------------
+
+app.get("/api/session-context", requireAuth, async (req, res) => {
+  const { agent, hint } = req.query;
+  if (!agent) return res.status(400).json({ error: "agent required" });
+  if (!PROC_KEY_RE.test(agent)) return res.status(400).json({ error: "invalid agent name" });
+
+  // 1. Procedural knobs
+  let proc = {};
+  try { proc = await procGet(agent); } catch {}
+
+  // 2. Last session summary — scan for most recent buffer entry or session record
+  let last_session = null;
+  try {
+    const candidates = [];
+    for await (const k of scanKeys("session:*:buffer", "string")) {
+      const raw = await redis.get(k);
+      if (!raw) continue;
+      try {
+        const turns = JSON.parse(raw);
+        const agentTurns = turns.filter(t => t.agent === agent);
+        if (agentTurns.length === 0) continue;
+        const last = agentTurns[agentTurns.length - 1];
+        candidates.push({ ts: last.ts, summary: last.content.substring(0, 200) });
+      } catch {}
+    }
+    if (candidates.length > 0) {
+      candidates.sort((a, b) => b.ts.localeCompare(a.ts));
+      last_session = candidates[0].summary;
+    }
+  } catch {}
+
+  // 3. BM25 relevant results, token-budgeted
+  let relevant = [];
+  if (hint) {
+    try {
+      const hits = bm25.search(hint, { limit: 15, minScore: 0.5, noiseFilter: true });
+      let budget = SESSION_CONTEXT_TOKENS - JSON.stringify(proc).length / 4 - 50;
+      for (const r of hits) {
+        const excerpt = (r.content || "").substring(0, 200);
+        budget -= Math.ceil((r.key.length + excerpt.length) / 4);
+        if (budget < 0) break;
+        relevant.push({ key: r.key, score: Math.round(r.score * 100) / 100, excerpt });
+      }
+    } catch {}
+  }
+
+  res.json({ proc, last_session, relevant });
+});
+
+// ---------------------------------------------------------------------------
 // Startup
 // ---------------------------------------------------------------------------
 
 (async () => {
   await redis.connect();
   await buildIndex();
-  setInterval(buildIndex, 60 * 60 * 1000); // hourly rebuild
+  setInterval(buildIndex, 60 * 60 * 1000); // hourly BM25 rebuild
+  // Flush all active session buffers on heartbeat
+  setInterval(async () => {
+    for (const sessionId of sessionBuffers.keys()) {
+      await flushBuffer(sessionId).catch(() => {});
+    }
+  }, BUFFER_FLUSH_MS);
   const port = parseInt(process.env.MCP_PORT, 10) || 3010;
-  app.listen(port, () => console.log(`HeurChain MCP v1.2.1 listening on port ${port} — ${bm25.size} docs indexed`));
+  app.listen(port, () => console.log(`HeurChain MCP v1.3.0 listening on port ${port} — ${bm25.size} docs indexed`));
 })();
