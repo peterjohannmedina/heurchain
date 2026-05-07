@@ -30,7 +30,7 @@ const COMPRESSOR_API_KEY         = process.env.ANTHROPIC_API_KEY        || proce
 
 // M3: Proactive memory briefing worker
 const BRIEFING_ENABLED         = process.env.BRIEFING_ENABLED !== "false";
-const BRIEFING_INTERVAL_MS     = parseInt(process.env.BRIEFING_INTERVAL_MS, 10) || 6 * 60 * 60 * 1000;
+const BRIEFING_INTERVAL_MS     = parseInt(process.env.BRIEFING_INTERVAL_MS, 10) || 24 * 60 * 60 * 1000;
 const BRIEFING_MAX_AGE_MS      = parseInt(process.env.BRIEFING_MAX_AGE_HOURS,  10) * 60 * 60 * 1000 || 6 * 60 * 60 * 1000;
 const BRIEFING_MAX_ITEMS       = parseInt(process.env.BRIEFING_MAX_ITEMS, 10)  || 5;
 const BRIEFING_INSTRUCTIONS    = process.env.BRIEFING_INSTRUCTIONS             || "";
@@ -382,24 +382,8 @@ async function generateBriefing(agentName) {
   const allEntries = [...procEntries, ...sessionTurns];
   if (!allEntries.length) return null;
 
-  // Try LLM synthesis first
-  if (COMPRESSOR_PROVIDER !== "none") {
-    const context = allEntries.join("\n");
-    const raw = await runCompressor(context, "briefing");
-    if (raw) {
-      try {
-        let items = JSON.parse(raw);
-        if (Array.isArray(items)) {
-          items = items.slice(0, BRIEFING_MAX_ITEMS).map(s => `HeurChain: ${String(s).trim()}`);
-          return items;
-        }
-      } catch {}
-      // LLM returned non-JSON — use as single item
-      return [`HeurChain: ${raw.slice(0, 120)}`];
-    }
-  }
-
-  // Raw fallback — format proc entries and recent session turns directly
+  // Format proc entries and recent session turns directly as HeurChain items.
+  // The receiving agent decides whether to surface them, query deeper, or synthesize.
   const items = [];
   for (const entry of procEntries.slice(0, 3)) {
     items.push(`HeurChain: ${entry}`);
@@ -434,7 +418,22 @@ async function runProactiveBriefings() {
         if (items && items.length) {
           await redis.setEx(briefingKey(agentName), 24 * 60 * 60, JSON.stringify(items));
           await redis.set(briefingTsKey(agentName), String(Date.now()));
-          console.log(`[briefing] agent=${agentName} items=${items.length} provider=${COMPRESSOR_PROVIDER}`);
+          console.log(`[briefing] agent=${agentName} items=${items.length}`);
+
+          // Optional webhook push — agent decides what to do with the reminders
+          const webhookUrl = await redis.get(procKey(agentName, "briefing_webhook_url"));
+          if (webhookUrl) {
+            fetch(webhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                agent: agentName,
+                timestamp: Date.now(),
+                items,
+              }),
+              signal: AbortSignal.timeout(10000),
+            }).catch(e => console.error(`[briefing] webhook failed for ${agentName}:`, e.message));
+          }
         }
       } catch (e) {
         console.error(`[briefing] failed for agent ${agentName}:`, e.message);
@@ -1361,5 +1360,5 @@ app.get("/api/session-context", requireAuth, async (req, res) => {
     console.log(`[heurchain] briefing worker: interval=${BRIEFING_INTERVAL_MS}ms provider=${COMPRESSOR_PROVIDER}`);
   }
   const port = parseInt(process.env.MCP_PORT, 10) || 3010;
-  app.listen(port, () => console.log(`HeurChain MCP v1.4.0 listening on port ${port} — ${bm25.size} docs indexed`));
+  app.listen(port, () => console.log(`HeurChain MCP v1.4.1 listening on port ${port} — ${bm25.size} docs indexed`));
 })();
