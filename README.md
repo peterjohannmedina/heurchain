@@ -11,6 +11,29 @@ HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kim
 
 ---
 
+## Wiring your agent — where to look
+
+You don't need to manually configure every option. Point your agent at either of these resources and it can read its own wiring instructions and self-configure:
+
+| Resource | Where | What it contains |
+|---|---|---|
+| **This README** | `https://www.npmjs.com/package/heurchain` | Complete setup, per-agent wiring snippets, API reference, session protocol |
+| **`AGENT_CONFIG.json`** | Bundled inside the npm package at install time | Machine-readable session lifecycle and tool catalog — designed for programmatic bootstrapping |
+
+**Paste this prompt to any agent to get it started:**
+
+```
+Read the setup instructions at https://www.npmjs.com/package/heurchain,
+then wire yourself to the HeurChain instance at http://<your-host>.
+Follow the session protocol in the README (or in AGENT_CONFIG.json if you
+have the npm package): start a session on startup, use /agent/store and
+/search during work, end with a summary on shutdown.
+```
+
+The agent will find its protocol section (MCP SSE or HTTP REST), wire itself, and start using the session lifecycle. No manual configuration needed beyond the host URL.
+
+---
+
 ## Tested agents
 
 | Agent | Protocol | Status |
@@ -245,7 +268,7 @@ curl "http://<host>:3012/search?q=hello&limit=5"
 
 ## Session protocol
 
-Every agent interaction should follow this lifecycle. Read `AGENT_CONFIG.json` (bundled with the npm package) for the full machine-readable version.
+Every agent interaction should follow this lifecycle. The full machine-readable version is in `AGENT_CONFIG.json` (bundled with the npm package at `node_modules/heurchain/AGENT_CONFIG.json`). Agents that can fetch URLs can also read this page directly at `https://www.npmjs.com/package/heurchain` to self-configure without any manual wiring.
 
 ```
 Startup
