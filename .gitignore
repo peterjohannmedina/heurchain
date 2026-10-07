@@ -3,8 +3,13 @@ inventory.yml
 vars/secrets.yml
 .vault_pass
 
-# IDE settings
-.claude/
+# IDE settings. Shared Claude Code config is committed so cloud sessions
+# (claude.ai/code, claude --cloud, routines) can load it; local overrides stay ignored.
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+!.claude/agents/
+!.claude/commands/
 .vscode/
 
 # Generated artifacts
