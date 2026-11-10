@@ -1,0 +1,82 @@
+# Publishes the heurchain npm package (npm/) with npm trusted publishing (OIDC).
+# No npm token is stored anywhere: npm verifies this workflow's GitHub identity.
+#
+# One-time setup on npmjs.com: heurchain -> Settings -> Trusted Publisher ->
+# GitHub Actions: user peterjohannmedina, repository heurchain,
+# workflow npm-publish.yml, environment npm.
+#
+# Release flow: bump "version" in npm/package.json on master, then publish a
+# GitHub release whose tag is npm-v<version> (e.g. npm-v2.0.1).
+name: npm publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pack and verify only; do not publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'npm-v')
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # required for trusted publishing and provenance
+    defaults:
+      run:
+        working-directory: npm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Use npm 11.5.1 or newer (trusted publishing)
+        run: npm install -g npm@^11.5.1 && npm --version
+
+      - name: Check version and tag
+        env:
+          EVENT: ${{ github.event_name }}
+          TAG: ${{ github.event.release.tag_name }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "package version: $version"
+          if [ "$EVENT" = "release" ] && [ "$TAG" != "npm-v$version" ]; then
+            echo "::error::Release tag $TAG does not match npm/package.json version $version (expected npm-v$version)"
+            exit 1
+          fi
+          if npm view "heurchain@$version" version >/dev/null 2>&1; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::warning::heurchain@$version is already on npm (dry run continues)"
+            else
+              echo "::error::heurchain@$version is already on npm; bump npm/package.json first"
+              exit 1
+            fi
+          fi
+
+      - name: Check agent config parses
+        run: node -e "const c=require('./AGENT_CONFIG.json'); if(!c.broker_version||!Object.keys(c.mcp_tools).length) process.exit(1); console.log('broker', c.broker_version)"
+
+      - name: Pack (dry run)
+        run: npm pack --dry-run
+
+      - name: Publish
+        if: github.event_name == 'release' || inputs.dry_run == false
+        run: npm publish --access public
