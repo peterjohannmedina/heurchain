@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -32,38 +30,29 @@ func (s *Server) storeWithIndexes(ctx context.Context, tenant string, sv storedV
 	if err := storeVec(ctx, s.rdb, tenant, sv); err != nil {
 		return err, nil
 	}
-	// Old graph edges/summaries cannot describe the corrected content. Run on
-	// retries too, so a partial projection failure remains repairable.
-	graphErr := s.removeMemoryGraph(ctx, tenant, sv.ID)
-	return nil, errors.Join(graphErr, reindexActiveDoc(ctx, s.rdb, tenant, sv.ID))
+	return nil, reindexActiveDoc(ctx, s.rdb, tenant, sv.ID)
 }
 
 type recallDiagnostics struct {
-	GraphStatus           string `json:"graph_status,omitempty"`
-	GraphCandidates       int                  `json:"graph_candidates,omitempty"`
-	GraphSeeds            int                  `json:"graph_seeds,omitempty"`
-	GraphEdges            int                  `json:"graph_edges_examined,omitempty"`
-	GraphTruncated        bool                 `json:"graph_truncated,omitempty"`
-	GraphMilliseconds     int64                `json:"graph_ms,omitempty"`
-	Options               RecallOptions        `json:"options"`
-	EmbeddingModel        string               `json:"embedding_model,omitempty"`
-	EmbeddingCacheHit     bool                 `json:"embedding_cache_hit"`
-	QueryID               string               `json:"query_id"`
-	EmbeddingMilliseconds int64                `json:"embedding_ms"`
-	RetrievalMilliseconds int64                `json:"retrieval_ms"`
-	TotalMilliseconds     int64                `json:"total_ms"`
-	BM25Candidates        int                  `json:"bm25_candidates"`
-	FusedCandidates       int                  `json:"fused_candidates"`
-	ReturnedDocuments     int                  `json:"returned_documents"`
-	BM25Status            string               `json:"bm25_status"`
-	DenseStatus           string               `json:"dense_status"`
-	EligibleDocuments     int                  `json:"eligible_documents"`
-	DenseCandidates       int                  `json:"dense_candidates"`
-	DenseLimit            int                  `json:"dense_candidate_limit"`
-	UnresolvedIDs         int                  `json:"unresolved_dense_ids"`
-	MissingText           int                  `json:"missing_text"`
-	RerankStatus          string               `json:"rerank_status,omitempty"`
-	RerankCandidates      int                  `json:"rerank_candidates,omitempty"`
+	Options               RecallOptions `json:"options"`
+	EmbeddingModel        string        `json:"embedding_model,omitempty"`
+	EmbeddingCacheHit     bool          `json:"embedding_cache_hit"`
+	QueryID               string        `json:"query_id"`
+	EmbeddingMilliseconds int64         `json:"embedding_ms"`
+	RetrievalMilliseconds int64         `json:"retrieval_ms"`
+	TotalMilliseconds     int64         `json:"total_ms"`
+	BM25Candidates        int           `json:"bm25_candidates"`
+	FusedCandidates       int           `json:"fused_candidates"`
+	ReturnedDocuments     int           `json:"returned_documents"`
+	BM25Status            string        `json:"bm25_status"`
+	DenseStatus           string        `json:"dense_status"`
+	EligibleDocuments     int           `json:"eligible_documents"`
+	DenseCandidates       int           `json:"dense_candidates"`
+	DenseLimit            int           `json:"dense_candidate_limit"`
+	UnresolvedIDs         int           `json:"unresolved_dense_ids"`
+	MissingText           int           `json:"missing_text"`
+	RerankStatus          string        `json:"rerank_status,omitempty"`
+	RerankCandidates      int           `json:"rerank_candidates,omitempty"`
 }
 
 type recallModelContextKey struct{}
@@ -205,10 +194,6 @@ func resolveRecallHits(hits []QdrantSearchResult, active, eligible []string) ([]
 }
 
 func runRecallSearch(ctx context.Context, rdb *redis.Client, tenant, text, agent string, tags []string, vector []float32, limit, candidates int, options ...RecallOptions) ([]SearchResult, recallDiagnostics, error) {
-	return runRecallSearchWithGraph(ctx, rdb, tenant, text, agent, tags, vector, limit, candidates, nil, options...)
-}
-
-func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, text, agent string, tags []string, vector []float32, limit, candidates int, graph *graphReadContext, options ...RecallOptions) ([]SearchResult, recallDiagnostics, error) {
 	var scope RecallOptions
 	if len(options) > 0 {
 		scope = options[0]
@@ -244,32 +229,6 @@ func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, te
 	}
 	lexicalCh := make(chan lexicalReply, 1)
 	denseCh := make(chan denseReply, 1)
-	type graphReply struct {
-		result graphReadResult
-		err    error
-		ms     int64
-	}
-	graphCh := make(chan graphReply, 1)
-	if scope.GraphMode == "on" {
-		if graph == nil || !graph.enabled {
-			diag.GraphStatus = "disabled"
-			graphCh <- graphReply{}
-		} else {
-			diag.GraphStatus = "ok"
-			go func() {
-				start := time.Now()
-				defer func() {
-					if value := recover(); value != nil {
-						graphCh <- graphReply{err: fmt.Errorf("graph panic: %v", value)}
-					}
-				}()
-				result, err := traverseGraph(ctx, rdb, graph.db, tenant, text, agent, tags, scope, nil, candidates)
-				graphCh <- graphReply{result: result, err: err, ms: time.Since(start).Milliseconds()}
-			}()
-		}
-	} else {
-		graphCh <- graphReply{}
-	}
 	go func() {
 		if scope.Mode == "dense" {
 			lexicalCh <- lexicalReply{}
@@ -298,17 +257,6 @@ func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, te
 		denseCh <- denseReply{hits, err}
 	}()
 	lexical, dense := <-lexicalCh, <-denseCh
-	graphResult := <-graphCh
-	diag.GraphMilliseconds = graphResult.ms
-	diag.GraphSeeds = graphResult.result.Seeds
-	diag.GraphEdges = graphResult.result.Examined
-	diag.GraphTruncated = graphResult.result.Truncated
-	if graphResult.err != nil {
-		diag.GraphStatus = "failed"
-		graphResult.result.Ranks = nil
-		graphResult.result.Paths = nil
-	}
-	diag.GraphCandidates = len(graphResult.result.Ranks)
 	if lexical.err != nil {
 		log.Printf("search: bm25 leg failed tenant=%s: %v", tenant, lexical.err)
 		diag.BM25Status = "failed"
@@ -335,7 +283,7 @@ func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, te
 		}
 	}
 	// Do not spend the final limit until records are active, hydrated and eligible.
-	ranked := fuseResultsWithGraph(lexical.scores, dense.hits, graphResult.result.Ranks, graphResult.result.Paths, 0, scope)
+	ranked := fuseResultsWithOptions(lexical.scores, dense.hits, 0, scope)
 	diag.FusedCandidates = len(ranked)
 	var identifiers map[string]bool
 	if scope.RerankMode == "exact_identifiers" {
@@ -366,7 +314,7 @@ func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, te
 			return nil, diag, fmt.Errorf("hydrate results: %w", err)
 		}
 		for i, cmd := range cmds {
-			// Every BM25, dense and graph candidate passes through here, so
+			// Every BM25 and dense candidate passes through here, so
 			// resurrected residue of a forgotten ID stops here.
 			if tombstoneHidden(forgotten[i]) {
 				continue
@@ -388,25 +336,6 @@ func runRecallSearchWithGraph(ctx context.Context, rdb *redis.Client, tenant, te
 			res := ranked[start+i]
 			if res.QdrantScore != nil && !semanticHitMatches(data, res.Payload, model) {
 				continue
-			}
-			if res.GraphRank > 0 {
-				ok, err := graphPathEligible(ctx, rdb, tenant, agent, tags, scope, res.GraphProvenance)
-				if err != nil || !ok {
-					// A source changed after traversal. Discard the entire graph leg,
-					// rerun baseline once, and preserve its ranking and source limits.
-					fallbackGraph := *graph
-					fallbackGraph.enabled = false
-					fallback, base, baseErr := runRecallSearchWithGraph(ctx, rdb, tenant, text, agent, tags, vector, limit, candidates, &fallbackGraph, scope)
-					base.GraphStatus = "stale"
-					if err != nil {
-						base.GraphStatus = "failed"
-					}
-					base.GraphSeeds = diag.GraphSeeds
-					base.GraphEdges = diag.GraphEdges
-					base.GraphMilliseconds = diag.GraphMilliseconds
-					base.GraphTruncated = diag.GraphTruncated
-					return fallback, base, baseErr
-				}
 			}
 			parent := res.ID
 			if source, ok := metadata["source"].(map[string]interface{}); ok {

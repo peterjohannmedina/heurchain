@@ -5,6 +5,9 @@
 ### Changed
 - README: states up front that this package is the agent kit and the server comes from the
   GitHub repository; adds architecture, store/recall and session-protocol diagrams.
+- `AGENT_CONFIG.json` and `AGENT_ONBOARDING.md` describe broker `0.6.1-oss.1`: the
+  knowledge-graph (`POST /graph/ask`) and ontology (`GET /ontology/capabilities`) operations
+  and the silo wording are gone.
 
 ## [2.0.0] - 2026-11-10
 

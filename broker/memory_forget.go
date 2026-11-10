@@ -58,12 +58,6 @@ return revision`
 	return revision, nil
 }
 
-// Graph extraction is opt-in, but existing graph rows/caches
-// must not retain a deleted source. Clear affected caches and orphan entities.
-func (s *Server) removeMemoryGraph(ctx context.Context, tenant, id string) error {
-	return removeGraphSource(ctx, s.rdb, s.db, tenant, id)
-}
-
 func (s *Server) handleMemoryForget(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ID               string `json:"id"`
@@ -86,8 +80,7 @@ func (s *Server) handleMemoryForget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	denseErr := defaultQdrantClient.DeletePoint(r.Context(), tenant, req.ID)
-	graphErr := s.removeMemoryGraph(r.Context(), tenant, req.ID)
-	complete := denseErr == nil && graphErr == nil
+	complete := denseErr == nil
 	s.auditMemoryChange(r, tenant, key, "memory.forget", req.ID, revision)
 	if !complete {
 		w.Header().Set("Content-Type", "application/json")
@@ -95,7 +88,7 @@ func (s *Server) handleMemoryForget(w http.ResponseWriter, r *http.Request) {
 	}
 	// Deleted content cannot be returned by broker recall even if an external
 	// projection is unavailable. Retrying this ID continues physical cleanup.
-	respondJSON(w, map[string]interface{}{"id": req.ID, "revision": revision, "forgotten": true, "retrievable": false, "cleanup_complete": complete, "cleanup": map[string]bool{"active_and_archive": true, "revision_content": true, "bm25": true, "dense": denseErr == nil, "graph": graphErr == nil}, "scope": "this memory ID and its revisions in broker storage/indexes; backups, independently copied records and previously returned client context are not erased", "retry_required": !complete})
+	respondJSON(w, map[string]interface{}{"id": req.ID, "revision": revision, "forgotten": true, "retrievable": false, "cleanup_complete": complete, "cleanup": map[string]bool{"active_and_archive": true, "revision_content": true, "bm25": true, "dense": denseErr == nil}, "scope": "this memory ID and its revisions in broker storage/indexes; backups, independently copied records and previously returned client context are not erased", "retry_required": !complete})
 }
 
 // Retained for API/readback tooling: the tombstone contains only identity and

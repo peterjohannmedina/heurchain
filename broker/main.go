@@ -37,8 +37,7 @@ func main() {
 	// Pragmas are passed in the DSN so EVERY connection gets them:
 	// secure_delete and foreign_keys are per-connection, and database/sql
 	// silently replaces a connection after driver errors — an Exec-only
-	// pragma would be lost on the replacement, voiding the shred-residue
-	// guarantee. The explicit Exec loop below still runs for first-time
+	// pragma would be lost on the replacement. The explicit Exec loop below still runs for first-time
 	// file setup and as a fail-fast check.
 	dsn := cfg.SQLite.Path
 	if !strings.HasPrefix(dsn, "file:") {
@@ -59,8 +58,8 @@ func main() {
 		"PRAGMA journal_mode=WAL",
 		"PRAGMA synchronous=NORMAL",
 		"PRAGMA foreign_keys=ON",
-		// Overwrite deleted content with zeros so crypto-shredded wrapped DEKs
-		// do not linger in freed B-tree pages (see silos.go shred path).
+		// Overwrite deleted content with zeros so deleted rows (revoked keys,
+		// removed tenants) do not linger in freed B-tree pages.
 		"PRAGMA secure_delete=ON",
 	} {
 		if _, err := db.Exec(pragma); err != nil {
@@ -78,23 +77,6 @@ func main() {
 	// refuses to serve on a half-migrated schema.
 	if err := runMigrations(db); err != nil {
 		log.Fatalf("Schema migration failed: %v", err)
-	}
-
-	// Silo crypto + attestation are feature-gated on env secrets so this
-	// binary deploys safely with the consultant-silo feature dark.
-	siloCryptoCtx, err := loadSiloCrypto()
-	if err != nil {
-		log.Fatalf("Silo crypto config error: %v", err)
-	}
-	if siloCryptoCtx == nil {
-		log.Printf("WARN: %s unset — silo/engagement endpoints will return 503", envKEK)
-	}
-	att, err := loadAttestor()
-	if err != nil {
-		log.Fatalf("Attestation config error: %v", err)
-	}
-	if att == nil {
-		log.Printf("WARN: %s unset — isolation/destruction certificates will not be minted", envAttestSeed)
 	}
 
 	// --- Redis ---------------------------------------------------------------
@@ -138,7 +120,7 @@ func main() {
 	log.Println("Redis configured:", cfg.Redis.Addr)
 
 	// --- HTTP Server ---------------------------------------------------------
-	srv := &Server{config: cfg, rdb: rdb, db: db, crypto: siloCryptoCtx, attest: att}
+	srv := &Server{config: cfg, rdb: rdb, db: db}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -179,29 +161,10 @@ func main() {
 		cfg.Consolidation.DecayDefault, cfg.Consolidation.DecayRates)
 	RunConsolidationWorker(ctx, bgRdb, srv.db, consolidationInterval)
 
-	SetHeurgraphConfig(&HeurgraphConfig{
-		Enabled:               cfg.Graph.Enabled,
-		TenantAllowlist:       cfg.Graph.TenantAllowlist,
-		RequestTimeoutSeconds: cfg.Graph.RequestTimeoutSeconds,
-		MaxSourceBytes:        cfg.Graph.MaxSourceBytes,
-		MaxTriples:            cfg.Graph.MaxTriples,
-		ReconcileBatchSize:    cfg.Graph.ReconcileBatchSize,
-		MaxAttempts:           cfg.Graph.MaxAttempts,
-		ExtractionModel:       cfg.Graph.ExtractionModel,
-		OllamaURL:             cfg.Graph.OllamaURL,
-		ResolutionBlockSize:   cfg.Graph.ResolutionBlockSize,
-		ActivationCutoff:      *cfg.Graph.ActivationCutoff,
-	})
-	heurgraphInterval := time.Duration(cfg.Graph.IntervalSeconds) * time.Second
-	log.Printf("Heurgraph: enabled=%v interval=%s model=%s url=%s cutoff=%.1f",
-		cfg.Graph.Enabled, heurgraphInterval, cfg.Graph.ExtractionModel, cfg.Graph.OllamaURL, *cfg.Graph.ActivationCutoff)
-	RunHeurgraphWorker(ctx, bgRdb, srv.db, heurgraphInterval)
-
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", srv.logRequest(srv.handleDiscovery))
 	mux.HandleFunc("/health", srv.logRequest(srv.handleHealth))
 	mux.HandleFunc("/ready", srv.logRequest(srv.handleReady))
-	mux.HandleFunc("/ontology/capabilities", srv.logRequest(srv.handleOntologyCapabilities))
 	mux.HandleFunc("/openapi.json", srv.logRequest(srv.handleOpenAPI))
 	mux.HandleFunc("/store", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleStore))))
 	mux.HandleFunc("/query", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleQuery))))
@@ -262,11 +225,6 @@ func main() {
 	mux.HandleFunc("/agent-provenance", srv.logRequest(srv.tenantStatusGuard(srv.handleAgentProvenance)))
 	mux.HandleFunc("/admin/", srv.logRequest(srv.handleAdmin))
 	mux.HandleFunc("/admin/db-version", srv.logRequest(srv.handleDBVersion))
-	mux.HandleFunc("/silos", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleSilos))))
-	mux.HandleFunc("/silos/", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleSiloByID))))
-	mux.HandleFunc("/engagements", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleEngagements))))
-	mux.HandleFunc("/engagements/", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleEngagementByID))))
-	mux.HandleFunc("/graph/ask", srv.logRequest(srv.tenantStatusGuard(srv.rpmGuard(srv.handleGraphAsk))))
 
 	bindAddr := fmt.Sprintf("%s:%s", cfg.Server.Bind, cfg.Server.Port)
 	httpServer := &http.Server{

@@ -7,11 +7,11 @@ flowchart TB
 
     P["TLS reverse proxy<br/>(only for remote agents)"]
 
-    subgraph B["HeurChain broker 0.6.1 · one Go binary · port 8080"]
+    subgraph B["HeurChain broker 0.6.1-oss.1 · one Go binary · port 8080"]
         direction LR
         G["Auth<br/>API key + tenant headers<br/>per-key rate limit"]
         API["REST API + MCP server<br/>store · search · sessions · recall"]
-        W["Background workers<br/>consolidation: decay to vault<br/>knowledge graph: off by default"]
+        W["Background workers<br/>consolidation: decay to vault<br/>semantic index repair"]
         G --> API
     end
 

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"regexp"
 	"runtime/debug"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,7 +35,7 @@ const (
 )
 
 // maxIdentifierLength bounds every caller-supplied identifier (tenant, doc,
-// agent, session, silo). The length bound is part of validID itself so that all
+// agent, session). The length bound is part of validID itself so that all
 // ~50 call sites inherit it — an identifier that passed the character class but
 // had no length limit was an availability bug, not a cosmetic one: docIDs are
 // embedded in Redis KEY NAMES once per unique term by updateBM25Index, so a
@@ -49,10 +48,8 @@ var validID = regexp.MustCompile(`^[a-zA-Z0-9\-_.]{1,128}$`)
 
 // storeSessionID resolves the session a /store belongs to.
 //
-// The top-level field wins when both are present: it is the one the silo path
-// already authenticates against, so honouring it keeps the session that
-// authorises the write and the session the item is filed under the same one.
-// The metadata form is the documented convention and is checked second.
+// The top-level field wins when both are present. The metadata form is the
+// documented convention and is checked second.
 //
 // A metadata value is validated here rather than trusted: it arrives inside an
 // opaque JSON blob, so unlike the top-level field it has never been checked,
@@ -124,8 +121,6 @@ type Server struct {
 	config          *Config
 	rdb             *redis.Client
 	db              *sql.DB
-	crypto          *siloCrypto // nil = silo features dark (HEURCHAIN_KEK unset)
-	attest          *attestor   // nil = attestation dark (HEURCHAIN_ATTEST_SEED unset)
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +136,7 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":      "ok",
 		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"version":     brokerVersion,
+		"edition":     brokerEdition,
 		"commit":      brokerCommit,
 		"sha256":      brokerArtifactSHA256(),
 		"instance_id": brokerInstanceID(),
@@ -203,27 +199,21 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var req struct {
-		ID               string            `json:"id"`
-		ExpectedRevision *int64            `json:"expected_revision,omitempty"`
-		AgentID          string            `json:"agent_id"`
-		Tags             []string          `json:"tags"`
-		Embedding        []float32         `json:"embedding"`
-		Metadata         json.RawMessage   `json:"metadata"`
-		Text             string            `json:"text"`
-		Namespace        string            `json:"namespace"`  // decay tier: ops | notes | self (default notes)
-		SessionID        string            `json:"session_id"` // silo path: inherit silo/engagement from session
-		Silo             string            `json:"silo"`       // silo path: explicit silo (direct, non-billable)
-		Ontology         *ontologyEnvelope `json:"ontology"`   // optional heurchain-ontology/v1 assertion
+		ID               string          `json:"id"`
+		ExpectedRevision *int64          `json:"expected_revision,omitempty"`
+		AgentID          string          `json:"agent_id"`
+		Tags             []string        `json:"tags"`
+		Embedding        []float32       `json:"embedding"`
+		Metadata         json.RawMessage `json:"metadata"`
+		Text             string          `json:"text"`
+		Namespace        string          `json:"namespace"`  // decay tier: ops | notes | self (default notes)
+		SessionID        string          `json:"session_id"` // session context list (same as metadata.session_id)
 	}
 	if !decodeJSONBody(w, r, &req, 0) {
 		return
 	}
 	if req.SessionID != "" && !validID.MatchString(req.SessionID) {
 		jsonError(w, "invalid session_id", http.StatusBadRequest)
-		return
-	}
-	if req.Silo != "" && !validID.MatchString(req.Silo) {
-		jsonError(w, "invalid silo", http.StatusBadRequest)
 		return
 	}
 	if req.ID == "" {
@@ -256,43 +246,6 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 	if err := recallMetadataValid(req.Metadata); err != nil {
 		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-	// Validation runs before silo resolution, embeddings, indexing, or writes.
-	// Reject mode must not spend model compute for a memory it will discard.
-	ontologyFindings, err := s.validateOntology(
-		ctx, tenantID, req.AgentID, req.SessionID, req.Text, req.Ontology,
-	)
-	if err != nil {
-		jsonError(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-	if req.Metadata, err = attachOntologyMetadata(req.Metadata, req.Ontology); err != nil {
-		jsonError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Resolve + enforce the silo write path before any storage work.
-	var wc *writeContext
-	if req.SessionID != "" || req.Silo != "" {
-		if req.ExpectedRevision != nil {
-			jsonError(w, "expected_revision is supported only for ordinary memory", http.StatusBadRequest)
-			return
-		}
-		if s.crypto == nil {
-			jsonError(w, "silo features not configured on this deployment", http.StatusServiceUnavailable)
-			return
-		}
-		var err error
-		wc, err = s.resolveWriteContext(ctx, tenantID, keyID, req.SessionID, req.Silo)
-		if err != nil {
-			if ee, ok := asEnforceError(err); ok {
-				jsonError(w, "forbidden: "+ee.Code, http.StatusForbidden)
-				return
-			}
-			log.Printf("silo resolve error tenant=%s: %v", tenantID, err)
-			jsonError(w, "silo resolution failed", http.StatusInternalServerError)
-			return
-		}
 	}
 	embedModel := ""
 	if len(req.Embedding) == 0 {
@@ -336,21 +289,8 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 		sv.RecordKind = "checkpoint"
 	}
 
-	var siloID, engagementID interface{}
 	var indexErr error
-	if wc != nil {
-		// Silo path: content (text + metadata) is sealed under the silo DEK
-		// and lands in the silo's dedicated keyspace. No plaintext BM25 index
-		// is built for encrypted content (vector-only retrieval in this
-		// release — a blind index would otherwise leak terms in key names).
-		if err := storeSiloVec(ctx, s.rdb, wc.DEK, tenantID, wc.SiloName, sv, req.Text); err != nil {
-			log.Printf("silo store error tenant=%s silo=%s: %v", tenantID, wc.SiloName, err)
-			jsonError(w, "storage failed", http.StatusInternalServerError)
-			return
-		}
-		siloID = wc.SiloID
-		engagementID = nullableString(wc.EngagementID)
-	} else {
+	{
 		var storeErr error
 		storeErr, indexErr = s.storeWithIndexes(ctx, tenantID, sv)
 		if storeErr != nil {
@@ -370,11 +310,7 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 		// GET /session/{id}/context reads back to resume a conversation.
 		//
 		// The session id is taken from the top-level field or from
-		// metadata.session_id. The broker's agent guide documents the metadata
-		// form ("pass session_id in metadata.session_id on every /store call
-		// this conversation"), while the top-level field was, until now, read
-		// only for the silo path — so a caller following the guide produced a
-		// store that carried its session id nowhere.
+		// metadata.session_id (the form the broker's agent guide documents).
 		if req.Text != "" {
 			if sid := storeSessionID(req.SessionID, req.Metadata); sid != "" {
 				if err := appendMemoryContext(ctx, s.rdb, tenantID, sid, req.ID); err != nil {
@@ -386,23 +322,16 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Queue heurgraph extraction. Only reached on the non-silo branch,
-		// where content is plaintext; silo content is sealed under the silo
-		// DEK and must never be handed to an external extraction model.
-		// Text-free stores (embedding supplied directly) have nothing to extract.
-		if req.Text != "" {
-			queueHeurgraphExtraction(ctx, s.rdb, tenantID, req.ID, req.AgentID, req.SessionID, req.Namespace)
-		}
 	}
 
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO usage_events (tenant_id, event_type, vectors_stored, agent_id, silo_id, engagement_id) VALUES (?, 'store', 1, ?, ?, ?)`,
-		tenantID, nullableString(req.AgentID), siloID, engagementID); err != nil {
+		`INSERT INTO usage_events (tenant_id, event_type, vectors_stored, agent_id) VALUES (?, 'store', 1, ?)`,
+		tenantID, nullableString(req.AgentID)); err != nil {
 		log.Printf("usage_events write failed tenant=%s: %v", tenantID, err)
 	}
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO audit_log (tenant_id, actor, action, resource, ip_address, user_agent, success, agent_id, silo_id, engagement_id) VALUES (?, ?, 'store', ?, ?, ?, 1, ?, ?, ?)`,
-		tenantID, fmt.Sprintf("%d", keyID), req.ID, clientIP(r), auditUserAgent(r), nullableString(req.AgentID), siloID, engagementID); err != nil {
+		`INSERT INTO audit_log (tenant_id, actor, action, resource, ip_address, user_agent, success, agent_id) VALUES (?, ?, 'store', ?, ?, ?, 1, ?)`,
+		tenantID, fmt.Sprintf("%d", keyID), req.ID, clientIP(r), auditUserAgent(r), nullableString(req.AgentID)); err != nil {
 		log.Printf("audit_log write failed tenant=%s: %v", tenantID, err)
 	}
 
@@ -410,26 +339,13 @@ func (s *Server) handleStore(w http.ResponseWriter, r *http.Request) {
 		"id":     req.ID,
 		"stored": true,
 	}
-	if wc == nil {
-		resp["revision"] = sv.Receipt.Revision
-		resp["changed"] = sv.Receipt.Changed
-	}
-	if wc != nil {
-		resp["silo"] = wc.SiloName
-		if wc.EngagementID != "" {
-			resp["engagement_id"] = wc.EngagementID
-		}
-	}
-	if len(ontologyFindings) > 0 {
-		resp["ontology_findings"] = ontologyFindings
-	}
-	if wc == nil {
-		resp["indexed"] = indexErr == nil
-		if indexErr != nil {
-			resp["warning"] = "memory stored; indexing incomplete; retry the same document ID"
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusAccepted)
-		}
+	resp["revision"] = sv.Receipt.Revision
+	resp["changed"] = sv.Receipt.Changed
+	resp["indexed"] = indexErr == nil
+	if indexErr != nil {
+		resp["warning"] = "memory stored; indexing incomplete; retry the same document ID"
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 	}
 	respondJSON(w, resp)
 }
@@ -475,7 +391,6 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		Filters   *memoryFilters `json:"filters,omitempty"`
 		Threshold float32        `json:"threshold"`
 		Text      string         `json:"text"`
-		Silo      string         `json:"silo"` // single-silo scoped, read-grant enforced
 	}
 	req.TopK = 10
 
@@ -487,10 +402,6 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Filters != nil {
-		if req.Silo != "" {
-			jsonError(w, "structured filters are not supported for silo queries", 400)
-			return
-		}
 		ctx = context.WithValue(ctx, memoryFilterContextKey{}, req.Filters)
 	}
 	if len(req.Embedding) > 4096 {
@@ -535,50 +446,17 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 		req.Embedding = embedding
 	}
 
-	var results []searchResult
-	var siloID interface{}
-	if req.Silo != "" {
-		// Silo reads fail closed to deny; there is no multi-silo or wildcard
-		// query on this surface (cross-silo fusion is admin/audit-plane work).
-		if !validID.MatchString(req.Silo) {
-			jsonError(w, "invalid silo", http.StatusBadRequest)
-			return
-		}
-		if s.crypto == nil {
-			jsonError(w, "silo features not configured on this deployment", http.StatusServiceUnavailable)
-			return
-		}
-		wc, err := s.checkReadGrant(ctx, tenantID, keyID, req.Silo)
-		if err != nil {
-			if ee, ok := asEnforceError(err); ok {
-				jsonError(w, "forbidden: "+ee.Code, http.StatusForbidden)
-				return
-			}
-			log.Printf("silo read resolve error tenant=%s: %v", tenantID, err)
-			jsonError(w, "search failed", http.StatusInternalServerError)
-			return
-		}
-		results, err = searchSiloVecs(ctx, s.rdb, wc.DEK, tenantID, wc.SiloName, req.AgentID, req.Embedding, req.TopK, req.Threshold)
-		if err != nil {
-			log.Printf("silo query error tenant=%s silo=%s: %v", tenantID, req.Silo, err)
-			jsonError(w, "search failed", http.StatusInternalServerError)
-			return
-		}
-		siloID = wc.SiloID
-	} else {
-		var err error
-		results, err = searchVecs(ctx, s.rdb, tenantID, req.AgentID, req.Tags, req.Embedding, req.TopK, req.Threshold, crossAgentEnabled(s.config))
-		if err != nil {
-			log.Printf("query error tenant=%s: %v", tenantID, err)
-			jsonError(w, "search failed", http.StatusInternalServerError)
-			return
-		}
+	results, err := searchVecs(ctx, s.rdb, tenantID, req.AgentID, req.Tags, req.Embedding, req.TopK, req.Threshold, crossAgentEnabled(s.config))
+	if err != nil {
+		log.Printf("query error tenant=%s: %v", tenantID, err)
+		jsonError(w, "search failed", http.StatusInternalServerError)
+		return
 	}
 	if results == nil {
 		results = []searchResult{}
 	}
 
-	if req.Text != "" && req.Silo == "" { // silo'd content has no plaintext BM25 index
+	if req.Text != "" {
 		queryTerms := tokenize(req.Text)
 		if len(queryTerms) > 0 {
 			docIDs := make([]string, len(results))
@@ -600,13 +478,13 @@ func (s *Server) handleQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO usage_events (tenant_id, event_type, vectors_stored, agent_id, silo_id) VALUES (?, 'query', 0, ?, ?)`,
-		tenantID, nullableString(req.AgentID), siloID); err != nil {
+		`INSERT INTO usage_events (tenant_id, event_type, vectors_stored, agent_id) VALUES (?, 'query', 0, ?)`,
+		tenantID, nullableString(req.AgentID)); err != nil {
 		log.Printf("usage_events write failed tenant=%s: %v", tenantID, err)
 	}
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO audit_log (tenant_id, actor, action, ip_address, user_agent, success, agent_id, silo_id) VALUES (?, ?, 'query', ?, ?, 1, ?, ?)`,
-		tenantID, fmt.Sprintf("%d", keyID), clientIP(r), auditUserAgent(r), nullableString(req.AgentID), siloID); err != nil {
+		`INSERT INTO audit_log (tenant_id, actor, action, ip_address, user_agent, success, agent_id) VALUES (?, ?, 'query', ?, ?, 1, ?)`,
+		tenantID, fmt.Sprintf("%d", keyID), clientIP(r), auditUserAgent(r), nullableString(req.AgentID)); err != nil {
 		log.Printf("audit_log write failed tenant=%s: %v", tenantID, err)
 	}
 
@@ -961,105 +839,4 @@ func (s *Server) logRequest(next http.HandlerFunc) http.HandlerFunc {
 		}()
 		next(sr, r)
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Graph Ask -- POST /graph/ask
-// ---------------------------------------------------------------------------
-
-// handleGraphAsk runs a multi-hop knowledge-graph query and returns
-// serialized subgraph results with per-edge provenance citations.
-//
-// Disabled tenants receive an explicit 503; successful empty traversal returns
-// 200 with retrieval diagnostics, distinguishing no evidence from unavailable.
-func (s *Server) handleGraphAsk(w http.ResponseWriter, r *http.Request) {
-	if handleCORSPreflight(w, r) {
-		return
-	}
-	setCORSHeaders(w)
-	if r.Method != http.MethodPost {
-		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// tenantStatusGuard has already validated the tenant header and confirmed
-	// the tenant is active, but re-check here so the handler is safe on its
-	// own — matching handleStore/handleQuery.
-	apiKey := r.Header.Get(s.config.Auth.APIKeyHeader)
-	tenantID := r.Header.Get(s.config.Auth.TenantHeader)
-	if apiKey == "" {
-		jsonError(w, "missing api key", http.StatusUnauthorized)
-		return
-	}
-	if tenantID == "" || !validID.MatchString(tenantID) {
-		jsonError(w, "missing or invalid tenant id", http.StatusBadRequest)
-		return
-	}
-	ctx := r.Context()
-	keyID, err := validateAPIKey(ctx, s.rdb, s.db, tenantID, apiKey)
-	if err != nil {
-		jsonError(w, "unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	var req struct {
-		Query   string   `json:"query"`
-		Hops    int      `json:"max_hops,omitempty"`
-		SeedIDs []string `json:"seed_ids,omitempty"`
-	}
-	if !decodeJSONBody(w, r, &req, maxBodyBytes) {
-		return
-	}
-	if req.Query == "" && len(req.SeedIDs) == 0 {
-		jsonError(w, "query or seed_ids required", http.StatusBadRequest)
-		return
-	}
-	if len(req.SeedIDs) > 32 {
-		jsonError(w, "too many seed_ids (max 32)", http.StatusBadRequest)
-		return
-	}
-	for _, id := range req.SeedIDs {
-		if !validID.MatchString(id) {
-			jsonError(w, "invalid seed_id", http.StatusBadRequest)
-			return
-		}
-	}
-	// Hops bounds traversal fan-out; clamp rather than reject so callers
-	// asking for more depth get a usable answer instead of an error.
-	if req.Hops <= 0 || req.Hops > 5 {
-		req.Hops = 2
-	}
-
-	if !graphTenantEnabled(tenantID) {
-		jsonError(w, "graph retrieval disabled for tenant", http.StatusServiceUnavailable)
-		return
-	}
-	req.Hops = min(req.Hops, 2)
-	result, err := traverseGraph(ctx, s.rdb, s.db, tenantID, req.Query, "", nil, RecallOptions{GraphHops: req.Hops}, req.SeedIDs, graphMaxCandidates)
-	if err != nil {
-		jsonError(w, "graph retrieval unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	citations := []graphCitation{}
-	seen := map[string]bool{}
-	ids := []string{}
-	for id := range result.Ranks {
-		ids = append(ids, id)
-	}
-	sort.Slice(ids, func(i, j int) bool { return result.Ranks[ids[i]] < result.Ranks[ids[j]] })
-	for _, id := range ids {
-		for _, edge := range result.Paths[id] {
-			if !seen[edge.RelationID] {
-				seen[edge.RelationID] = true
-				citations = append(citations, edge)
-			}
-		}
-	}
-	if _, err := s.db.ExecContext(ctx, `INSERT INTO usage_events (tenant_id,event_type,vectors_stored) VALUES (?,'graph_ask',0)`, tenantID); err != nil {
-		log.Printf("graph usage event: %v", err)
-	}
-	if _, err := s.db.ExecContext(ctx, `INSERT INTO audit_log (tenant_id,actor,action,ip_address,user_agent,success) VALUES (?,?,'graph_ask',?,?,1)`, tenantID, fmt.Sprint(keyID), clientIP(r), auditUserAgent(r)); err != nil {
-		log.Printf("graph audit event: %v", err)
-	}
-	respondJSON(w, map[string]interface{}{"query": req.Query, "max_hops": req.Hops, "citations": citations, "source_memory_ids": ids, "retrieval": map[string]interface{}{"graph_status": "ok", "seeds": result.Seeds, "edges_examined": result.Examined, "truncated": result.Truncated}})
 }

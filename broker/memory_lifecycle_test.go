@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/redis/go-redis/v9"
 )
 
 func lifecycleCall(t *testing.T, f *recallFixture, handler http.HandlerFunc, body interface{}) *httptest.ResponseRecorder {
@@ -320,57 +318,6 @@ func TestForgetRequiresCurrentRevisionAndValidTenantCredential(t *testing.T) {
 	w := lifecycleCall(t, f, f.s.handleMemoryGet, map[string]interface{}{"id": "protected"})
 	if w.Code != 200 {
 		t.Fatal(w.Code, w.Body)
-	}
-}
-
-func TestMemoryGraphInvalidationPreservesUnrelatedSources(t *testing.T) {
-	for _, operation := range []string{"update", "forget"} {
-		t.Run(operation, func(t *testing.T) {
-			f := newRecallFixture(t)
-			ctx := context.Background()
-			f.store(t, "source", "old fact", "codex", nil, 1)
-			for _, id := range []string{"orphan", "shared", "other"} {
-				if _, err := f.s.db.Exec(`INSERT INTO graph_entities (tenant_id,id,name,type,summary) VALUES ('t1',?,?, 'concept','old derived summary')`, id, id); err != nil {
-					t.Fatal(err)
-				}
-				f.s.rdb.HSet(ctx, heurgraphEntKey("t1", id), "summary", "cached old summary")
-				f.s.rdb.ZAdd(ctx, heurgraphAdjKey("t1", id), redis.Z{Score: 1, Member: "cached edge"})
-			}
-			for _, edge := range [][4]string{{"obsolete", "orphan", "shared", "source"}, {"retained", "shared", "other", "different-source"}} {
-				if _, err := f.s.db.Exec(`INSERT INTO graph_relations (tenant_id,id,source_id,target_id,predicate,source_memory_id,src_created_at) VALUES ('t1',?,?,?,'related',?,'2026-01-01')`, edge[0], edge[1], edge[2], edge[3]); err != nil {
-					t.Fatal(err)
-				}
-			}
-			var w *httptest.ResponseRecorder
-			if operation == "update" {
-				w = lifecycleCall(t, f, f.s.handleMemoryUpdate, map[string]interface{}{"id": "source", "expected_revision": 1, "text": "corrected fact", "reason": "fix"})
-			} else {
-				w = lifecycleCall(t, f, f.s.handleMemoryForget, map[string]interface{}{"id": "source", "expected_revision": 1, "confirm": true})
-			}
-			if w.Code != 200 {
-				t.Fatal(w.Code, w.Body)
-			}
-			var edges, orphans int
-			var summary string
-			if err := f.s.db.QueryRow(`SELECT count(*) FROM graph_relations WHERE tenant_id='t1'`).Scan(&edges); err != nil {
-				t.Fatal(err)
-			}
-			if err := f.s.db.QueryRow(`SELECT count(*) FROM graph_entities WHERE tenant_id='t1' AND id='orphan'`).Scan(&orphans); err != nil {
-				t.Fatal(err)
-			}
-			if err := f.s.db.QueryRow(`SELECT summary FROM graph_entities WHERE tenant_id='t1' AND id='shared'`).Scan(&summary); err != nil {
-				t.Fatal(err)
-			}
-			if edges != 1 || orphans != 0 || summary != "" {
-				t.Fatal(edges, orphans, summary)
-			}
-			if n, _ := f.s.rdb.Exists(ctx, heurgraphEntKey("t1", "shared"), heurgraphAdjKey("t1", "orphan")).Result(); n != 0 {
-				t.Fatal("stale graph cache retained")
-			}
-			if n, _ := f.s.rdb.Exists(ctx, heurgraphEntKey("t1", "other")).Result(); n != 1 {
-				t.Fatal("unrelated cache removed")
-			}
-		})
 	}
 }
 

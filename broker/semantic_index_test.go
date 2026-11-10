@@ -137,7 +137,7 @@ func TestSemanticIndexVaultRaceDeletesLatePoint(t *testing.T) {
 	}
 }
 
-func TestSemanticReconciliationBackfillsLegacyAndSkipsSilos(t *testing.T) {
+func TestSemanticReconciliationBackfillsLegacyAndSkipsForeignKeys(t *testing.T) {
 	ctx := context.Background()
 	rdb := newTestRedis(t)
 	if err := rdb.HSet(ctx, vecKey("t1", "legacy"), "embedding", "[1,0]", "text", "old note").Err(); err != nil {
@@ -146,7 +146,7 @@ func TestSemanticReconciliationBackfillsLegacyAndSkipsSilos(t *testing.T) {
 	if err := rdb.SAdd(ctx, vecSetKey("t1"), "legacy").Err(); err != nil {
 		t.Fatal(err)
 	}
-	rdb.SAdd(ctx, "tenant:t1:silo:secret:vecs", "hidden")
+	rdb.SAdd(ctx, "tenant:t1:other:secret:vecs", "hidden")
 	reconciler := new(semanticReconciler)
 	for i := 0; i < 5; i++ {
 		if err := reconciler.step(ctx, rdb); err != nil {

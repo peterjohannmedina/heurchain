@@ -1,4 +1,4 @@
-# HeurChain broker 0.6.1 configuration for the Compose stack.
+# HeurChain broker 0.6.1-oss.1 configuration for the Compose stack.
 #
 # The loader is STRICT: an unknown key is a startup error that names the key.
 # Environment-only settings: ADMIN_USER, ADMIN_PASS, QDRANT_URL, QDRANT_API_KEY,

@@ -47,7 +47,7 @@ POST /memory/update requires expected_revision and a correction reason. Retained
 superseded versions are explicit history, not ordinary recall.
 POST /memory/forget requires expected_revision and confirm=true. Verify the
 cleanup_complete receipt. It covers that ID and its retained versions, not
-backups, independent copies, encrypted silos or previously returned client context.
+backups, independent copies or previously returned client context.
 POST /memory/checkpoint saves concise working context; /memory/resume reads it by
 ID without dense indexing. Retain checkpoint_id in the harness handoff and verify
 stored=true. A host hook or proactive agent call must invoke it; MCP does not
@@ -151,10 +151,10 @@ BM25/dense ranks and scores. The retrieval object reports backend status,
 candidate limits, unresolved IDs and missing text. A failed leg may return a
 degraded result, including an empty result; inspect bm25_status/dense_status.
 
-Non-silo /store now projects into both indexes. HTTP 200 with indexed=true
+/store projects into both indexes. HTTP 200 with indexed=true
 confirms completed indexing. HTTP 202 with stored=true and indexed=false means
 the memory is durable but indexing is incomplete: retry the same document ID.
-There is no background retry queue. Silo storage retains its encrypted path.
+There is no background retry queue.
 
 ---
 

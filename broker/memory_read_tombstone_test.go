@@ -129,17 +129,6 @@ func TestReadsHideResurrectedForgottenMemory(t *testing.T) {
 	}
 	onlyKeep("/agent/<id>", ids)
 
-	// A resurrected source is neither extracted nor citable as evidence.
-	if _, eligible, err := readGraphSource(ctx, f.s.rdb, "t1", "gone-residue"); err != nil || eligible {
-		t.Fatalf("readGraphSource(gone-residue) eligible=%v err=%v, want ineligible", eligible, err)
-	}
-	if err := f.s.validateOntologyEvidence(ctx, "t1", "", &ontologyEnvelope{SourceMemoryID: "gone-residue"}); err == nil {
-		t.Fatal("a forgotten memory was accepted as ontology evidence")
-	}
-	if err := f.s.validateOntologyEvidence(ctx, "t1", "", &ontologyEnvelope{SourceMemoryID: "keep"}); err != nil {
-		t.Fatalf("an active memory was refused as ontology evidence: %v", err)
-	}
-
 	// Vault residue is not exported or counted either.
 	if err := f.s.rdb.HSet(ctx, memoryVaultKey("t1", "gone-residue"), map[string]interface{}{
 		"text": "vault residue", "embedding": "[1,1]", "metadata": "{}",

@@ -15,8 +15,10 @@ This repository is the **self-hosted edition**, and it is the complete package: 
 source, a Docker Compose stack that builds and runs it with everything it needs, a systemd
 unit for native installs, and the docs. No accounts, billing or cloud services are involved.
 
-> **Broker version: 0.6.1 (frozen).** This edition tracks the 0.6.1 broker. Changes here
-> are limited to fixes and documentation; new broker features are not added to this line.
+> **Broker version: 0.6.1-oss.1 (frozen).** This edition is cut from the 0.6.1 broker.
+> Versions read `<mainline>-oss.<n>`, and `GET /health` reports `"edition": "oss"`. Changes
+> here are limited to fixes and documentation; new broker features are not added to this
+> line. See [CHANGELOG.md](CHANGELOG.md) for what differs from mainline 0.6.1.
 
 ### Where to get what
 
@@ -156,13 +158,11 @@ stops startup with an error naming it) and secrets in `deploy/.env`. The comment
 
 | Path | Contents |
 |---|---|
-| [`broker/`](broker) | The Go memory broker, version 0.6.1 |
+| [`broker/`](broker) | The Go memory broker, version 0.6.1-oss.1 |
 | [`broker/schema.sql`](broker/schema.sql) | SQLite baseline schema, embedded in the broker and applied on first start |
 | [`deploy/`](deploy) | Dockerfile, Compose stack, example config, systemd unit |
 | [`docs/`](docs) | Installation and operation; diagram sources |
 | [`npm/`](npm) | Source of the `heurchain` npm package: agent configuration and guide (no server) |
-| [`research/`](research) | Retrieval research and findings ([summary](research/FINDINGS.md)) |
-| [`results/`](results) | Completed evaluation results and offline verification receipts |
 
 ## Build and test
 
@@ -174,12 +174,12 @@ go test ./...      # uses an in-memory Redis; no services needed
 
 Go 1.23 or newer. The broker uses pure-Go SQLite, so no C toolchain is required.
 
-## Research findings
+## Tips for better recall
 
-The self-hosted research line compared HeurChain with Mem0 on LoCoMo and studied why
-retrieval misses happen. The headline results and the practical advice for 0.6.1 users
-(put absolute dates in stored text; ask `/search` for more results on multi-hop recall) are
-in [research/FINDINGS.md](research/FINDINGS.md).
+- Put absolute dates in stored text ("on 2026-11-01", not "last Friday"). Relative dates lose
+  their meaning once the memory is recalled later.
+- For questions that need several facts together, ask `/search` for more results (`limit`)
+  and let the agent combine them.
 
 ## Upgrading from 1.x
 

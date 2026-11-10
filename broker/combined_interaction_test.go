@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,84 +10,6 @@ import (
 	"sync/atomic"
 	"testing"
 )
-
-func TestCombinedOutboxScopesSessionCorrectionAndGraphForget(t *testing.T) {
-	f := graphFixture(t)
-	ctx := context.Background()
-	sid, err := startSession(ctx, f.s.rdb, "t1", "codex", 3600, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.fail.Store(true)
-	w := f.call(t, "/store", map[string]interface{}{
-		"id": "combined-source", "agent_id": "codex", "text": "alpha calibration", "embedding": []float32{1, 0},
-		"metadata": map[string]interface{}{"session_id": sid, "project": "alpha", "memory_kind": "factual", "valid_from": "2026-01-01T00:00:00Z", "valid_until": "2027-01-01T00:00:00Z"},
-	})
-	if w.Code != 202 || lifecycleJSON(t, w)["revision"] != float64(1) {
-		t.Fatalf("partial store: %d %s", w.Code, w.Body)
-	}
-	f.fail.Store(false)
-	if err := drainSemanticIndex(ctx, f.s.rdb, defaultQdrantClient); err != nil {
-		t.Fatal(err)
-	}
-	f.mu.Lock()
-	for _, p := range f.points {
-		if p.Payload["memory_kind"] != "factual" || p.Payload["valid_until"] != "2027-01-01T00:00:00Z" || p.Payload["index_revision"] == "" {
-			t.Error("scope/provenance lost in worker payload", p.Payload)
-		}
-	}
-	f.mu.Unlock()
-	query := map[string]interface{}{"text": "calibration", "retrieval_mode": "dense", "memory_kind": "factual", "as_of": "2026-06-01T00:00:00Z", "filters": map[string]interface{}{"metadata": map[string]interface{}{"project": "alpha"}}, "limit": 1}
-	hits, _ := f.search(t, query)
-	if len(hits) != 1 || hits[0].ID != "combined-source" || hits[0].QdrantScore == nil {
-		t.Fatal("worker recovery lost dense scoped recall", hits)
-	}
-	graphTestEdge(t, f, "combined-edge", "alpha", "beta", "combined-source")
-	if got := graphTraverse(t, f, "codex", nil, RecallOptions{}); len(got.Ranks) != 1 {
-		t.Fatal("missing graph source", got)
-	}
-	w = lifecycleCall(t, f, f.s.handleMemoryUpdate, map[string]interface{}{"id": "combined-source", "expected_revision": 1, "text": "corrected calibration", "reason": "combined correction"})
-	if w.Code != 200 || lifecycleJSON(t, w)["revision"] != float64(2) {
-		t.Fatal(w.Code, w.Body)
-	}
-	items, err := getContext(ctx, f.s.rdb, "t1", sid, 20)
-	if err != nil || !reflect.DeepEqual(items, []string{"corrected calibration"}) {
-		t.Fatal("session retained superseded text", items, err)
-	}
-	if graphCount(t, f.s.db, "graph_relations") != 0 || graphCount(t, f.s.db, "graph_extractions") != 0 {
-		t.Fatal("correction retained graph derivations")
-	}
-	graphTestEdge(t, f, "replacement-edge", "alpha", "gamma", "combined-source")
-	f.fail.Store(true)
-	w = lifecycleCall(t, f, f.s.handleMemoryForget, map[string]interface{}{"id": "combined-source", "expected_revision": 2, "confirm": true})
-	if w.Code != 202 || lifecycleJSON(t, w)["cleanup_complete"] != false {
-		t.Fatal("dense outage hidden on forget", w.Code, w.Body)
-	}
-	items, err = getContext(ctx, f.s.rdb, "t1", sid, 20)
-	if err != nil || len(items) != 0 {
-		t.Fatal("session exposed forgotten source", items, err)
-	}
-	for _, table := range []string{"graph_relations", "graph_extractions", "graph_entities", "graph_aliases"} {
-		if graphCount(t, f.s.db, table) != 0 {
-			t.Fatal("forgotten graph content retained", table)
-		}
-	}
-	f.fail.Store(false)
-	if err := drainSemanticIndex(ctx, f.s.rdb, defaultQdrantClient); err != nil {
-		t.Fatal(err)
-	}
-	if f.s.rdb.ZCard(ctx, semanticPendingKey).Val() != 0 {
-		t.Fatal("forgotten dense cleanup not acknowledged")
-	}
-	hits, _ = f.search(t, query)
-	if len(hits) != 0 {
-		t.Fatal("forgotten memory returned", hits)
-	}
-	w = f.call(t, "/store", map[string]interface{}{"id": "combined-source", "text": "resurrect", "embedding": []float32{1, 0}})
-	if w.Code != 410 {
-		t.Fatal("forgotten ID resurrected", w.Code, w.Body)
-	}
-}
 
 func TestCombinedScopeFiltersBeforeLexicalRetention(t *testing.T) {
 	for _, postings := range []bool{false, true} {
@@ -162,16 +83,13 @@ func TestCombinedStrictCacheSeparatesExplicitProviders(t *testing.T) {
 func TestCombinedTenantBoundariesOnMemorySessionAndVault(t *testing.T) {
 	f := newRecallFixture(t)
 	f.store(t, "private", "tenant one private source", "codex", nil, 1)
-	for name, handler := range map[string]http.HandlerFunc{"memory": f.s.handleMemoryGet, "session": f.s.handleSessionCtx, "vault": f.s.handleVaultExport, "graph": f.s.handleGraphAsk} {
+	for name, handler := range map[string]http.HandlerFunc{"memory": f.s.handleMemoryGet, "session": f.s.handleSessionCtx, "vault": f.s.handleVaultExport} {
 		path, method, body := "/memory/get", http.MethodPost, `{"id":"private","query":"private"}`
 		if name == "session" {
 			path, method = "/session/test/context", http.MethodGet
 		}
 		if name == "vault" {
 			path, method = "/vault/export?tenant_id=t2", http.MethodGet
-		}
-		if name == "graph" {
-			path = "/graph/ask"
 		}
 		r := httptest.NewRequest(method, path, strings.NewReader(body))
 		r.Header.Set("X-HeurChain-API-Key", "test-key")
@@ -235,26 +153,4 @@ func TestCombinedReindexCannotAcknowledgeRejectedProjection(t *testing.T) {
 	if err == nil || calls != 3 {
 		t.Fatal("rejected projection acknowledged", calls, err)
 	}
-}
-
-func TestCombinedDisabledFeaturesMakeNoModelCalls(t *testing.T) {
-	f := newRecallFixture(t)
-	old := heurgraphCfg
-	t.Cleanup(func() { heurgraphCfg = old })
-	heurgraphCfg = HeurgraphConfig{}
-	f.store(t, "source", "alpha calibration", "codex", nil, 1)
-	if graphTenantEnabled("t1") {
-		t.Fatal("default feature enabled")
-	}
-	hits, diag := f.search(t, map[string]interface{}{"text": "alpha", "graph_mode": "on"})
-	if len(hits) != 1 || diag.GraphStatus != "disabled" || diag.EmbeddingCacheHit {
-		t.Fatal(hits, diag)
-	}
-	if err := indexGraphSource(context.Background(), f.s.rdb, f.s.db, "t1", "source"); err == nil {
-		t.Fatal("disabled extraction allowed")
-	}
-	if graphCount(t, f.s.db, "graph_extractions") != 0 {
-		t.Fatal("disabled extraction wrote ledger")
-	}
-	_, _ = json.Marshal(diag) // Diagnostics remain serializable with disabled feature state.
 }

@@ -14,13 +14,13 @@ vectors), fused into one ranking.
 > protocol) and `AGENT_ONBOARDING.md`. **It does not run anything.**
 >
 > **To run HeurChain**, clone the GitHub repository and start it with Docker Compose. That
-> repository is the complete self-hosted package: the Go broker 0.6.1, Redis, Qdrant and an
+> repository is the complete self-hosted package: the Go broker 0.6.1-oss.1, Redis, Qdrant and an
 > embedding model. See [Run the broker](#run-the-broker) below.
 >
 > Versions 1.x were a Node.js server. They are deprecated and still installable as
 > `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x).
 
-Source, install guide and research: **https://github.com/peterjohannmedina/heurchain**
+Source and install guide: **https://github.com/peterjohannmedina/heurchain**
 
 ## How it works
 
@@ -105,7 +105,7 @@ you. Follow the session protocol in AGENT_CONFIG.json.
 
 | File | For |
 |---|---|
-| `AGENT_CONFIG.json` | Machine-readable manifest: auth headers, MCP and HTTP connection, session protocol, every HTTP operation and MCP tool of broker 0.6.1 |
+| `AGENT_CONFIG.json` | Machine-readable manifest: auth headers, MCP and HTTP connection, session protocol, every HTTP operation and MCP tool of broker 0.6.1-oss.1 |
 | `AGENT_ONBOARDING.md` | The broker's own agent guide (the same text it serves at `GET /`) |
 | `README.md` | This file |
 

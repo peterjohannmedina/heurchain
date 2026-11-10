@@ -1,4 +1,4 @@
-# HeurChain self-hosted stack: broker 0.6.1 + Redis + Qdrant + Ollama embeddings.
+# HeurChain self-hosted stack: broker 0.6.1-oss.1 + Redis + Qdrant + Ollama embeddings.
 #
 #   cp deploy/.env.example deploy/.env      # then set ADMIN_USER / ADMIN_PASS
 #   docker compose -f deploy/compose.yaml up -d --build
@@ -13,7 +13,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: heurchain-broker:0.6.1
+    image: heurchain-broker:0.6.1-oss.1
     restart: unless-stopped
     env_file: [./.env]
     environment:

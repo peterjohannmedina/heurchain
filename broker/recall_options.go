@@ -9,9 +9,6 @@ import (
 
 // RecallOptions is opt-in. Omitted fields preserve the existing search contract.
 type RecallOptions struct {
-	GraphMode     string  `json:"graph_mode,omitempty"`
-	GraphHops     int     `json:"graph_hops,omitempty"`
-	GraphWeight   float64 `json:"graph_weight,omitempty"`
 	Mode          string  `json:"retrieval_mode"`
 	RRFK          float64 `json:"rrf_k"`
 	LexicalWeight float64 `json:"lexical_weight"`
@@ -28,24 +25,6 @@ func (o *RecallOptions) normalize() error {
 	}
 	if o.Mode != "hybrid" && o.Mode != "lexical" && o.Mode != "dense" {
 		return fmt.Errorf("invalid retrieval_mode")
-	}
-	if o.GraphMode != "" && o.GraphMode != "off" && o.GraphMode != "on" {
-		return fmt.Errorf("invalid graph_mode")
-	}
-	if o.GraphMode == "on" && o.Mode != "hybrid" {
-		return fmt.Errorf("graph_mode on requires hybrid retrieval")
-	}
-	if o.GraphHops < 0 || o.GraphHops > 2 {
-		return fmt.Errorf("graph_hops must be 1..2")
-	}
-	if o.GraphHops == 0 && o.GraphMode == "on" {
-		o.GraphHops = 2
-	}
-	if o.GraphWeight == 0 && o.GraphMode == "on" {
-		o.GraphWeight = 1
-	}
-	if math.IsNaN(o.GraphWeight) || math.IsInf(o.GraphWeight, 0) || o.GraphWeight < 0 || o.GraphWeight > 10 {
-		return fmt.Errorf("graph_weight must be finite and between 0 and 10")
 	}
 	if o.RerankMode != "" && o.RerankMode != "none" && o.RerankMode != "exact_identifiers" {
 		return fmt.Errorf("invalid rerank_mode")
