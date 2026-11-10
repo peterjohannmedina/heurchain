@@ -11,8 +11,6 @@ var defaultQdrantClient = NewQdrantClient("http://localhost:6333", defaultVector
 
 // SearchResult is a single document returned by the fused RRF search.
 type SearchResult struct {
-	GraphRank         int                    `json:"graph_rank,omitempty"`
-	GraphProvenance   []graphCitation        `json:"graph_provenance,omitempty"`
 	ID                string                 `json:"id"`
 	RRFScore          float64                `json:"rrf_score"`
 	IdentifierMatches *int                   `json:"identifier_matches,omitempty"`
@@ -49,10 +47,6 @@ func fuseResults(bm25Scores map[string]float64, qdrantHits []QdrantSearchResult,
 }
 
 func fuseResultsWithOptions(bm25Scores map[string]float64, qdrantHits []QdrantSearchResult, topN int, options RecallOptions) []SearchResult {
-	return fuseResultsWithGraph(bm25Scores, qdrantHits, nil, nil, topN, options)
-}
-
-func fuseResultsWithGraph(bm25Scores map[string]float64, qdrantHits []QdrantSearchResult, graphRanks map[string]int, graphPaths map[string][]graphCitation, topN int, options RecallOptions) []SearchResult {
 	// Build BM25 rank map (1-indexed, sorted by score descending).
 	type bm25Doc struct {
 		id    string
@@ -94,20 +88,10 @@ func fuseResultsWithGraph(bm25Scores map[string]float64, qdrantHits []QdrantSear
 	for _, hit := range qdrantHits {
 		allDocs[hit.ID] = struct{}{}
 	}
-	for id, rank := range graphRanks {
-		if rank > 0 {
-			allDocs[id] = struct{}{}
-		}
-	}
 
 	results := make([]SearchResult, 0, len(allDocs))
 	for id := range allDocs {
 		sr := SearchResult{ID: id}
-		if rank := graphRanks[id]; rank > 0 {
-			sr.GraphRank = rank
-			sr.GraphProvenance = graphPaths[id]
-			sr.RRFScore += options.GraphWeight / (options.RRFK + float64(rank))
-		}
 
 		bm25Rank, hasBM25 := bm25Ranks[id]
 		qdrantRank, hasQdrant := qdrantRanks[id]

@@ -43,7 +43,7 @@ func openAPISpec() map[string]interface{} {
 	}
 	secured := []map[string][]string{{"HeurChainAPIKey": {}, "HeurChainTenant": {}}}
 	object := map[string]interface{}{"type": "object"}
-	storeResponses := responses("Stored and indexed memory (non-silo); stored encrypted memory (silo)", object)
+	storeResponses := responses("Stored and indexed memory", object)
 	storeResponses["202"] = map[string]interface{}{
 		"description": "Memory stored, but indexing incomplete. indexed=false; retry the same document ID. No automatic retry is scheduled.",
 		"content":     map[string]interface{}{"application/json": map[string]interface{}{"schema": object}},
@@ -76,10 +76,6 @@ func openAPISpec() map[string]interface{} {
 				"operationId": "getOpenAPISpec", "summary": "Get this OpenAPI document", "security": []interface{}{},
 				"responses": responses("OpenAPI document", object),
 			}},
-			"/ontology/capabilities": map[string]interface{}{"get": map[string]interface{}{
-				"operationId": "getOntologyCapabilities", "summary": "Inspect the optional ontology policy", "security": []interface{}{},
-				"responses": responses("Ontology policy capabilities", object),
-			}},
 			"/store": map[string]interface{}{"post": map[string]interface{}{
 				"operationId": "storeMemory", "summary": "Store a durable memory",
 				"requestBody": jsonBody(ref("StoreRequest")), "responses": storeResponses,
@@ -105,18 +101,6 @@ func openAPISpec() map[string]interface{} {
 					"401": map[string]interface{}{"$ref": "#/components/responses/Error"},
 					"409": map[string]interface{}{"$ref": "#/components/responses/Error"},
 					"500": map[string]interface{}{"$ref": "#/components/responses/Error"},
-				},
-			}},
-			"/graph/ask": map[string]interface{}{"post": map[string]interface{}{
-				"operationId": "graphAsk",
-				"summary":     "Bounded multi-hop knowledge-graph retrieval",
-				"description": "Opt-in tenant-scoped traversal over active plaintext source evidence. Returns source citations, not a generated answer. Default-off; disabled tenants receive 503.",
-				"requestBody": jsonBody(ref("GraphAskRequest")),
-				"responses": map[string]interface{}{
-					"200": map[string]interface{}{"description": "Graph evidence and diagnostics", "content": map[string]interface{}{"application/json": map[string]interface{}{"schema": object}}},
-					"503": map[string]interface{}{"$ref": "#/components/responses/Error"},
-					"400": map[string]interface{}{"$ref": "#/components/responses/Error"},
-					"401": map[string]interface{}{"$ref": "#/components/responses/Error"},
 				},
 			}},
 			"/memory/manifest": map[string]interface{}{"get": map[string]interface{}{
@@ -192,24 +176,6 @@ func openAPISpec() map[string]interface{} {
 								"slowest (durable facts about the agent or user). An unrecognised value is rejected " +
 								"with 400 rather than silently defaulting.",
 						},
-						"ontology": ref("OntologyEnvelope"),
-					},
-				},
-				"OntologyEnvelope": map[string]interface{}{
-					"type": "object", "required": []string{"version", "assertion"},
-					"properties": map[string]interface{}{
-						"version":          map[string]interface{}{"type": "string", "const": ontologyContractVersion},
-						"assertion":        ref("OntologyAssertion"),
-						"source_excerpt":   map[string]interface{}{"type": "string", "maxLength": 1000, "description": "Must occur verbatim in text when supplied."},
-						"source_memory_id": map[string]interface{}{"type": "string", "description": "Existing memory ID in the authenticated tenant; use when source text is unavailable."},
-					},
-				},
-				"OntologyAssertion": map[string]interface{}{
-					"type": "object", "required": []string{"subject", "predicate", "object"},
-					"properties": map[string]interface{}{
-						"subject":   map[string]interface{}{"type": "string"},
-						"predicate": map[string]interface{}{"type": "string", "enum": []string{"has_status", "belongs_to", "created_in", "written_by", "references", "supersedes", "consolidated_from"}},
-						"object":    map[string]interface{}{"type": "string"},
 					},
 				},
 				"SearchRequest": map[string]interface{}{
@@ -223,9 +189,6 @@ func openAPISpec() map[string]interface{} {
 						"memory_kind":       map[string]interface{}{"type": "string", "enum": []string{"factual", "creative"}},
 						"max_per_source":    map[string]interface{}{"type": "integer", "minimum": 0, "maximum": 50, "default": 0},
 						"qdrant_candidates": map[string]interface{}{"type": "integer", "minimum": 1, "maximum": 200, "default": 50},
-						"graph_mode":        map[string]interface{}{"type": "string", "enum": []string{"off", "on"}, "default": "off"},
-						"graph_hops":        map[string]interface{}{"type": "integer", "minimum": 1, "maximum": 2, "default": 2},
-						"graph_weight":      map[string]interface{}{"type": "number", "exclusiveMinimum": 0, "maximum": 10, "default": 1},
 						"rerank_mode":       map[string]interface{}{"type": "string", "enum": []string{"none", "exact_identifiers"}},
 						"text":              map[string]interface{}{"type": "string"}, "limit": map[string]interface{}{"type": "integer", "minimum": 1, "maximum": 50},
 						"agent_id": map[string]interface{}{"type": "string"}, "tags": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
@@ -243,21 +206,6 @@ func openAPISpec() map[string]interface{} {
 						"text":      map[string]interface{}{"type": "string"}, "top_k": map[string]interface{}{"type": "integer", "minimum": 1},
 						"threshold": map[string]interface{}{"type": "number"}, "agent_id": map[string]interface{}{"type": "string"},
 						"tags": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-					},
-				},
-				"GraphAskRequest": map[string]interface{}{
-					"type":        "object",
-					"description": "Either query or seed_ids must be supplied.",
-					"properties": map[string]interface{}{
-						"query": map[string]interface{}{"type": "string", "description": "Natural-language question; resolved to seed entities."},
-						"seed_ids": map[string]interface{}{
-							"type": "array", "items": map[string]interface{}{"type": "string"}, "maxItems": 32,
-							"description": "Explicit entity IDs to start traversal from, instead of resolving a query.",
-						},
-						"max_hops": map[string]interface{}{
-							"type": "integer", "minimum": 1, "maximum": 2, "default": 2,
-							"description": "Traversal depth. Omitted depth defaults to 2; values outside 1-2 are clamped to 2.",
-						},
 					},
 				},
 				"SessionStartRequest": map[string]interface{}{

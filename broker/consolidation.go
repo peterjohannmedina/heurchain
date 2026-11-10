@@ -250,8 +250,8 @@ func consolidateTenant(ctx context.Context, rdb *redis.Client, tenantID string) 
 // runConsolidation sweeps every active tenant once.
 //
 // A panic here would kill the whole process — this runs on a bare goroutine
-// with no http handler recover() above it — so the sweep is wrapped, matching
-// drainHeurgraphStream. Note the panic surface is identical in dry-run mode:
+// with no http handler recover() above it — so the sweep is wrapped. Note the
+// panic surface is identical in dry-run mode:
 // PromoteLive gates only the destructive write, while the scan, hash parsing
 // and activation math run either way.
 func runConsolidation(ctx context.Context, rdb *redis.Client, db *sql.DB) {

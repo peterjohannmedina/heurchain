@@ -1,10 +1,17 @@
 # Changelog (npm package)
 
+## [2.0.2] - 2026-11-10
+
+### Changed
+- Changelog wording only; package contents are otherwise the same as 2.0.1.
+
 ## [2.0.1] - 2026-11-10
 
 ### Changed
 - README: states up front that this package is the agent kit and the server comes from the
   GitHub repository; adds architecture, store/recall and session-protocol diagrams.
+- `AGENT_CONFIG.json` and `AGENT_ONBOARDING.md` describe broker `0.6.1-oss.1`, which omits
+  features that are incompatible with the self-hosted version.
 
 ## [2.0.0] - 2026-11-10
 

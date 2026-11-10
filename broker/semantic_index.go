@@ -163,7 +163,7 @@ func indexSemanticDocument(ctx context.Context, rdb *redis.Client, q *QdrantClie
 }
 
 // Reconciliation advances one SCAN/SSCAN page per tick, independent of Qdrant
-// availability. Only active plaintext keyspaces are eligible; never silo keys.
+// availability. Only active keyspaces are eligible.
 type semanticReconciler struct {
 	keyCursor       uint64
 	keys            []string

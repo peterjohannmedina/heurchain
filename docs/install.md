@@ -1,4 +1,4 @@
-# Installing HeurChain (self-hosted, broker 0.6.1)
+# Installing HeurChain (self-hosted, broker 0.6.1-oss.1)
 
 Two supported paths: Docker Compose (recommended) or a native Linux service.
 Both run the same broker binary and need the same three services:

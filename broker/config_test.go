@@ -28,7 +28,6 @@ func TestUnknownKeyIsFatal(t *testing.T) {
 	for _, body := range []string{
 		"consolidation:\n  promotion_threshhold: -2.0\n", // typo
 		"totally_made_up:\n  x: 1\n",                     // unknown section
-		"graph:\n  ollama_urls: http://x\n",              // typo'd graph key
 	} {
 		if _, err := loadConfig(writeCfg(t, body)); err == nil {
 			t.Errorf("silently accepted unknown key in:\n%s", body)
@@ -48,16 +47,10 @@ func TestFeaturesBagAcceptsUnknownFlags(t *testing.T) {
 	}
 }
 
-func TestOntologyDefaultsOffAndRejectsInvalidMode(t *testing.T) {
-	cfg, err := loadConfig(writeCfg(t, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Ontology.Enabled || cfg.Ontology.Mode != "warn" {
-		t.Fatalf("ontology defaults = enabled:%v mode:%q, want false/warn", cfg.Ontology.Enabled, cfg.Ontology.Mode)
-	}
-	if _, err := loadConfig(writeCfg(t, "ontology:\n  enabled: true\n  mode: permissive\n")); err == nil {
-		t.Fatal("invalid ontology mode was accepted")
+// An ontology: section written for the mainline broker must still load.
+func TestOntologySectionIsAcceptedAndIgnored(t *testing.T) {
+	if _, err := loadConfig(writeCfg(t, "ontology:\n  enabled: true\n  mode: reject\n")); err != nil {
+		t.Fatalf("ontology section rejected: %v", err)
 	}
 }
 
@@ -172,69 +165,10 @@ func TestRevokeByIDInvalidatesCache(t *testing.T) {
 	}
 }
 
-// activation_cutoff must accept an explicit 0.0. On a log-activation scale 0 is
-// meaningful (access_count exactly offsets decay), so treating it as "unset"
-// would make that cutoff unconfigurable.
-func TestActivationCutoffAcceptsExplicitZero(t *testing.T) {
-	cfg, err := loadConfig(writeCfg(t, "graph:\n  activation_cutoff: 0.0\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Graph.ActivationCutoff == nil {
-		t.Fatal("ActivationCutoff nil after defaults")
-	}
-	if *cfg.Graph.ActivationCutoff != 0.0 {
-		t.Errorf("explicit 0.0 became %v; it was treated as unset", *cfg.Graph.ActivationCutoff)
-	}
-
-	// Absent, it must still default to -10.0.
-	cfg, err = loadConfig(writeCfg(t, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if *cfg.Graph.ActivationCutoff != -10.0 {
-		t.Errorf("default cutoff = %v, want -10.0", *cfg.Graph.ActivationCutoff)
-	}
-
-	// A negative value must survive untouched.
-	cfg, err = loadConfig(writeCfg(t, "graph:\n  activation_cutoff: -3.5\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if *cfg.Graph.ActivationCutoff != -3.5 {
-		t.Errorf("cutoff = %v, want -3.5", *cfg.Graph.ActivationCutoff)
-	}
-}
-
-// graph.ollama_url falls back to embed.ollama_url so the two can't drift.
-func TestGraphOllamaURLFallback(t *testing.T) {
-	cfg, err := loadConfig(writeCfg(t, "embed:\n  ollama_url: http://embed:11434\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Graph.OllamaURL != "http://embed:11434" {
-		t.Errorf("graph.ollama_url = %q, want the embed fallback", cfg.Graph.OllamaURL)
-	}
-}
-
-func TestGraphRuntimeConfigDefaultsAndBounds(t *testing.T) {
-	cfg, err := loadConfig(writeCfg(t, ""))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.Graph.Enabled || cfg.Graph.RequestTimeoutSeconds != 30 || cfg.Graph.MaxSourceBytes != 24000 || cfg.Graph.MaxTriples != 32 || cfg.Graph.ReconcileBatchSize != 20 || cfg.Graph.MaxAttempts != 3 {
-		t.Fatalf("unsafe graph defaults: %+v", cfg.Graph)
-	}
-	cfg, err = loadConfig(writeCfg(t, "graph:\n  enabled: true\n  tenant_allowlist: [test-only]\n  interval_seconds: 1\n  request_timeout_seconds: 5\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.Graph.Enabled || len(cfg.Graph.TenantAllowlist) != 1 || cfg.Graph.TenantAllowlist[0] != "test-only" || cfg.Graph.IntervalSeconds != 1 {
-		t.Fatal("graph rollout settings ignored")
-	}
-	for _, setting := range []string{"request_timeout_seconds: 121", "max_source_bytes: 128001", "max_triples: 129", "reconcile_batch_size: 101", "max_attempts: 11", "max_attempts: -1"} {
-		if _, err := loadConfig(writeCfg(t, "graph:\n  "+setting+"\n")); err == nil {
-			t.Errorf("accepted unbounded graph setting %s", setting)
-		}
+// A graph: section written for the mainline broker must still load; the
+// self-hosted edition ignores it.
+func TestGraphSectionIsAcceptedAndIgnored(t *testing.T) {
+	if _, err := loadConfig(writeCfg(t, "graph:\n  enabled: true\n  activation_cutoff: -3.5\n")); err != nil {
+		t.Fatalf("graph section rejected: %v", err)
 	}
 }

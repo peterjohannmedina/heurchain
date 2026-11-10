@@ -40,12 +40,10 @@ func agentSessSetKey(tenantID, agentID string) string {
 // Session lifecycle
 // ---------------------------------------------------------------------------
 
-// sessionBinding carries the optional silo/engagement pinning plus the
-// creating key id (sessions are only usable by the key that created them).
+// sessionBinding carries the creating key id (sessions are only usable by the
+// key that created them).
 type sessionBinding struct {
-	KeyID        int64
-	Silo         string // silo NAME
-	EngagementID string
+	KeyID int64
 }
 
 func startSession(ctx context.Context, rdb *redis.Client, tenantID, agentID string, ttlSeconds int, bind *sessionBinding) (string, error) {
@@ -64,17 +62,6 @@ func startSession(ctx context.Context, rdb *redis.Client, tenantID, agentID stri
 	pipe.HSet(ctx, metaKey, "agent_id", agentID, "created_at", now, "last_seen", now, "ttl_s", ttlSeconds)
 	if bind != nil {
 		pipe.HSet(ctx, metaKey, "key_id", fmt.Sprintf("%d", bind.KeyID))
-		if bind.Silo != "" {
-			pipe.HSet(ctx, metaKey, "silo", bind.Silo)
-		}
-		if bind.EngagementID != "" {
-			pipe.HSet(ctx, metaKey, "engagement_id", bind.EngagementID)
-			// Reverse index so pausing/closing the engagement can kill its
-			// live sessions (broker-enforced lifecycle).
-			engSet := engagementSessSetKey(tenantID, bind.EngagementID)
-			pipe.SAdd(ctx, engSet, sessionID)
-			pipe.Expire(ctx, engSet, 24*time.Hour)
-		}
 	}
 	pipe.SAdd(ctx, agentSetKey, sessionID)
 	// Enforce session TTL so abandoned sessions expire instead of leaking Redis memory.
@@ -280,10 +267,8 @@ func (s *Server) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var req struct {
-		AgentID      string `json:"agent_id"`
-		TTLSeconds   int    `json:"ttl_seconds"`
-		EngagementID string `json:"engagement_id"` // bind session to an engagement (billable path)
-		Silo         string `json:"silo"`          // or bind to a raw silo (non-billable)
+		AgentID    string `json:"agent_id"`
+		TTLSeconds int    `json:"ttl_seconds"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		jsonError(w, "invalid json body", http.StatusBadRequest)
@@ -291,44 +276,6 @@ func (s *Server) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bind := &sessionBinding{KeyID: keyID}
-	if req.EngagementID != "" || req.Silo != "" {
-		if s.crypto == nil {
-			jsonError(w, "silo features not configured on this deployment", http.StatusServiceUnavailable)
-			return
-		}
-		siloName := req.Silo
-		if req.EngagementID != "" {
-			// Resolve engagement -> silo, then enforce all four gates at bind
-			// time so a consultant without a grant/membership is rejected at
-			// session start (and again on every /store).
-			var engSiloID, engSiloName string
-			err := s.db.QueryRowContext(ctx,
-				`SELECT e.silo_id, s.name FROM engagements e JOIN silos s ON s.id = e.silo_id
-				  WHERE e.id = ? AND e.tenant_id = ?`, req.EngagementID, tenantID).
-				Scan(&engSiloID, &engSiloName)
-			if err != nil {
-				jsonError(w, "engagement not found", http.StatusNotFound)
-				return
-			}
-			siloName = engSiloName
-		}
-		if siloName == "" || !validID.MatchString(siloName) {
-			jsonError(w, "invalid silo", http.StatusBadRequest)
-			return
-		}
-		if _, err := s.enforceGates(ctx, tenantID, keyID, siloName, req.EngagementID); err != nil {
-			if ee, ok := asEnforceError(err); ok {
-				jsonError(w, "forbidden: "+ee.Code, http.StatusForbidden)
-				return
-			}
-			log.Printf("session bind error tenant=%s: %v", tenantID, err)
-			jsonError(w, "session start failed", http.StatusInternalServerError)
-			return
-		}
-		bind.Silo = siloName
-		bind.EngagementID = req.EngagementID
-	}
-
 	sessionID, err := startSession(ctx, s.rdb, tenantID, req.AgentID, req.TTLSeconds, bind)
 	if err != nil {
 		log.Printf("session start error tenant=%s: %v", tenantID, err)
@@ -336,14 +283,7 @@ func (s *Server) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]interface{}{"session_id": sessionID}
-	if bind.Silo != "" {
-		resp["silo"] = bind.Silo
-	}
-	if bind.EngagementID != "" {
-		resp["engagement_id"] = bind.EngagementID
-	}
-	respondJSON(w, resp)
+	respondJSON(w, map[string]interface{}{"session_id": sessionID})
 }
 
 func (s *Server) handleSessionEnd(w http.ResponseWriter, r *http.Request) {

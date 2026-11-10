@@ -60,12 +60,12 @@ func TestSessionContextDoesNotRecreateMissingSession(t *testing.T) {
 }
 
 func TestSessionContextStopsAtSessionInvalidation(t *testing.T) {
-	for _, action := range []string{"end", "engagement", "expired"} {
+	for _, action := range []string{"end", "expired"} {
 		t.Run(action, func(t *testing.T) {
 			f := newRecallFixture(t)
 			ctx := context.Background()
 			f.store(t, "session-memory", "private context", "codex", nil, 1)
-			sid, err := startSession(ctx, f.s.rdb, "t1", "codex", 3600, &sessionBinding{EngagementID: "eng-1"})
+			sid, err := startSession(ctx, f.s.rdb, "t1", "codex", 3600, &sessionBinding{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -77,8 +77,6 @@ func TestSessionContextStopsAtSessionInvalidation(t *testing.T) {
 				if err := endSession(ctx, f.s.rdb, "t1", sid); err != nil {
 					t.Fatal(err)
 				}
-			case "engagement":
-				f.s.invalidateEngagementSessions(ctx, "t1", "eng-1")
 			case "expired":
 				if err := f.s.rdb.Del(ctx, sessMetaKey("t1", sid)).Err(); err != nil {
 					t.Fatal(err)

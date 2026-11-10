@@ -456,7 +456,7 @@ func TestAgentProvenanceOmitsDisclosedFieldsWhenVisibilityOff(t *testing.T) {
 // TestStoreAuditRecordsUserAgent closes the loop the provenance endpoint
 // depends on: data-plane handlers must write the caller's User-Agent. The old
 // fixture inserted user_agent rows directly, so /agent-provenance passed while
-// /store, /query, /search and /graph/ask recorded nothing.
+// /store, /query and /search recorded nothing.
 func TestStoreAuditRecordsUserAgent(t *testing.T) {
 	f := newRecallFixture(t)
 	body := `{"id":"ua-doc","text":"user agent fixture","agent_id":"codex","embedding":[1,0]}`

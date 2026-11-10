@@ -1,9 +1,9 @@
 {
   "$schema": "heurchain-agent-config/3.0",
   "package": "heurchain",
-  "package_version": "2.0.0",
-  "broker_version": "0.6.1",
-  "purpose": "Self-configuration manifest for AI agents connecting to a self-hosted HeurChain broker (0.6.1). Read once at session start. The broker serves the same guidance live at GET / and the full API at GET /openapi.json.",
+  "package_version": "2.0.2",
+  "broker_version": "0.6.1-oss.1",
+  "purpose": "Self-configuration manifest for AI agents connecting to a self-hosted HeurChain broker (0.6.1-oss.1). Read once at session start. The broker serves the same guidance live at GET / and the full API at GET /openapi.json.",
   "deployment": {
     "broker_url": "http://localhost:8080",
     "note": "Replace with your broker's address. Ask the user for it if it is not configured. The broker is self-hosted: see https://github.com/peterjohannmedina/heurchain/blob/master/docs/install.md",
@@ -20,8 +20,7 @@
       "GET /",
       "GET /health",
       "GET /ready",
-      "GET /openapi.json",
-      "GET /ontology/capabilities"
+      "GET /openapi.json"
     ],
     "if_missing": "Use the client's secret store or ask the user to configure the connection. Never write keys into memories or logs.",
     "provisioning": "An operator creates a tenant and key with POST /admin/tenants (admin basic auth)."
@@ -102,10 +101,6 @@
       "summary": "Get active session IDs for compatibility",
       "auth": "tenant API key"
     },
-    "POST /graph/ask": {
-      "summary": "Bounded multi-hop knowledge-graph retrieval",
-      "auth": "tenant API key"
-    },
     "GET /health": {
       "summary": "Check Redis/SQLite liveness; does not check Qdrant",
       "auth": "none"
@@ -137,10 +132,6 @@
     "POST /memory/update": {
       "summary": "Correct a memory using its expected_revision from memory_get. Previous content is retained as superseded history. Metadata and tags replace those fields. Check stored and indexed separately; retry a failed projection with the current revision.",
       "auth": "tenant API key"
-    },
-    "GET /ontology/capabilities": {
-      "summary": "Inspect the optional ontology policy",
-      "auth": "none"
     },
     "GET /openapi.json": {
       "summary": "Get this OpenAPI document",

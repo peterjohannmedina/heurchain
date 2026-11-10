@@ -28,7 +28,7 @@ func TestOpenAPI(t *testing.T) {
 		t.Fatalf("openapi = %v, want 3.1.0", doc["openapi"])
 	}
 	paths := doc["paths"].(map[string]interface{})
-	for _, path := range []string{"/store", "/search", "/agent/{agent_id}", "/session/start", "/graph/ask", "/admin/vault/rehydrate"} {
+	for _, path := range []string{"/store", "/search", "/agent/{agent_id}", "/session/start", "/admin/vault/rehydrate"} {
 		if _, ok := paths[path]; !ok {
 			t.Errorf("missing path %s", path)
 		}

@@ -51,7 +51,7 @@ jobs:
       - name: Wait for the broker
         run: |
           for i in $(seq 1 60); do
-            if curl -fsS "$BASE/health" >/dev/null; then curl -sS "$BASE/health"; echo; exit 0; fi
+            if curl -fsS "$BASE/health" >/dev/null; then curl -sS "$BASE/health" | tee /tmp/health.json; echo; grep -q '"edition":"oss"' /tmp/health.json; exit 0; fi
             sleep 2
           done
           $COMPOSE logs broker; exit 1

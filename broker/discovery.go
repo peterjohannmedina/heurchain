@@ -68,7 +68,7 @@ POST /memory/update requires expected_revision and a correction reason. Retained
 superseded versions are explicit history, not ordinary recall.
 POST /memory/forget requires expected_revision and confirm=true. Verify the
 cleanup_complete receipt. It covers that ID and its retained versions, not
-backups, independent copies, encrypted silos or previously returned client context.
+backups, independent copies or previously returned client context.
 POST /memory/checkpoint saves concise working context; /memory/resume reads it by
 ID without dense indexing. Retain checkpoint_id in the harness handoff and verify
 stored=true. A host hook or proactive agent call must invoke it; MCP does not
@@ -172,10 +172,10 @@ BM25/dense ranks and scores. The retrieval object reports backend status,
 candidate limits, unresolved IDs and missing text. A failed leg may return a
 degraded result, including an empty result; inspect bm25_status/dense_status.
 
-Non-silo /store now projects into both indexes. HTTP 200 with indexed=true
+/store projects into both indexes. HTTP 200 with indexed=true
 confirms completed indexing. HTTP 202 with stored=true and indexed=false means
 the memory is durable but indexing is incomplete: retry the same document ID.
-There is no background retry queue. Silo storage retains its encrypted path.
+There is no background retry queue.
 
 ---
 
@@ -460,7 +460,6 @@ var discoveryJSON = discoverySpec{
 				"namespace": "string (optional; ops|notes|self, default notes) - decay tier; " +
 					"'self' for durable facts you want kept longest, 'ops' for short-lived " +
 					"operational chatter. Unknown values are rejected with 400.",
-				"ontology": "object (optional; heurchain-ontology/v1 assertion; see GET /ontology/capabilities)",
 			},
 			AuthRequired: true,
 		},
@@ -498,22 +497,6 @@ var discoveryJSON = discoverySpec{
 			Summary: "Generate a 768-dim embedding without storing it.",
 			Body: map[string]any{
 				"text": "string",
-			},
-			AuthRequired: true,
-		},
-		{
-			Path:   "/graph/ask",
-			Method: "POST",
-			Summary: "NOT YET IMPLEMENTED - returns 501. Multi-hop knowledge-graph query over the " +
-				"heurgraph relationship index, for questions needing more than one hop " +
-				"(\"what depends on X?\"), answered with per-edge provenance. Auth and validation " +
-				"are live; traversal is not built. It 501s rather than returning an empty 200, " +
-				"because an empty success is indistinguishable from \"no answer\". Do not depend " +
-				"on this yet - use /search or /query.",
-			Body: map[string]any{
-				"query":    "string (required unless seed_ids given)",
-				"seed_ids": "string[] (optional; max 32; explicit start entities)",
-				"max_hops": "int (optional; default 2, clamped to 1-5)",
 			},
 			AuthRequired: true,
 		},

@@ -12,7 +12,17 @@ package main
 //
 // When cutting a release, change this line and add the matching section to
 // CHANGELOG.md. Nothing else needs editing.
-const brokerVersion = "0.6.1"
+//
+// OSS edition scheme: <mainline version>-oss.<n>. The first part names the
+// mainline broker this build is cut from; -oss.<n> counts changes made only in
+// the self-hosted OSS edition. The suffix is valid
+// SemVer, a valid Docker tag and a valid git tag, and it never collides with a
+// hosted build, which keeps the plain mainline number.
+const brokerVersion = "0.6.1-oss.1"
+
+// brokerEdition is reported by GET /health so an operator can tell the
+// self-hosted OSS edition from a hosted build at a glance.
+const brokerEdition = "oss"
 
 // brokerRollbackPolicy controls whether the automated release pipeline may
 // restore the previous binary after a failed smoke test. A release containing

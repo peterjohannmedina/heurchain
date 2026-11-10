@@ -112,13 +112,9 @@ type Config struct {
 		ScanCap int `yaml:"scan_cap"`
 	} `yaml:"query"`
 
-	// Ontology controls the deterministic assertion-policy adapter at the
-	// authoritative /store boundary. It is default-off so current clients keep
-	// their exact behaviour until an operator deliberately enables observation.
-	Ontology struct {
-		Enabled bool   `yaml:"enabled"`
-		Mode    string `yaml:"mode"` // warn | reject
-	} `yaml:"ontology"`
+	// Ontology and Graph (below) are accepted and ignored so a config written
+	// for the mainline broker still loads instead of failing the strict key check.
+	Ontology map[string]interface{} `yaml:"ontology"`
 
 	// Features is a forward-compatibility bag for rollout flags. The keys are
 	// deliberately not enumerated as struct fields: the deployed config
@@ -128,30 +124,8 @@ type Config struct {
 	// pretending they do anything.
 	Features map[string]bool `yaml:"features"`
 
-	// Graph governs the heurgraph knowledge-graph index worker: how often it
-	// drains the pending-extraction stream, which model performs triple
-	// extraction, and the edge-activation floor below which edges are not
-	// traversed. OllamaURL defaults to Embed.OllamaURL when unset.
-	Graph struct {
-		Enabled               bool     `yaml:"enabled"`
-		TenantAllowlist       []string `yaml:"tenant_allowlist"`
-		RequestTimeoutSeconds int      `yaml:"request_timeout_seconds"`
-		MaxSourceBytes        int      `yaml:"max_source_bytes"`
-		MaxTriples            int      `yaml:"max_triples"`
-		ReconcileBatchSize    int      `yaml:"reconcile_batch_size"`
-		MaxAttempts           int      `yaml:"max_attempts"`
-		IntervalSeconds       int      `yaml:"interval_seconds"`
-		ExtractionModel       string   `yaml:"extraction_model"`
-		OllamaURL             string   `yaml:"ollama_url"`
-		ResolutionBlockSize   int      `yaml:"resolution_block_size"`
-
-		// ActivationCutoff is the edge-activation floor below which graph
-		// recall will not traverse an edge. Typed *float64 because 0.0 is a
-		// meaningful value on a log-activation scale (A_i = 0 means
-		// access_count exactly offsets decay) — treating 0 as "unset" would
-		// make that cutoff impossible to configure.
-		ActivationCutoff *float64 `yaml:"activation_cutoff"`
-	} `yaml:"graph"`
+	// Graph is accepted and ignored; see Ontology above.
+	Graph map[string]interface{} `yaml:"graph"`
 }
 
 // embedOllamaURLExplicitlyEmpty reports whether the config sets embed.ollama_url
@@ -296,42 +270,6 @@ func loadConfig(path string) (*Config, error) {
 			"self":  0.1,
 		}
 	}
-	for _, bound := range []struct {
-		name     string
-		value    *int
-		def, max int
-	}{
-		{"request_timeout_seconds", &cfg.Graph.RequestTimeoutSeconds, 30, 120},
-		{"max_source_bytes", &cfg.Graph.MaxSourceBytes, 24000, 128000},
-		{"max_triples", &cfg.Graph.MaxTriples, 32, 128},
-		{"reconcile_batch_size", &cfg.Graph.ReconcileBatchSize, 20, 100},
-		{"max_attempts", &cfg.Graph.MaxAttempts, 3, 10},
-	} {
-		if *bound.value < 0 || *bound.value > bound.max {
-			return nil, fmt.Errorf("graph.%s out of bounds", bound.name)
-		}
-		if *bound.value == 0 {
-			*bound.value = bound.def
-		}
-	}
-	if cfg.Graph.IntervalSeconds <= 0 {
-		cfg.Graph.IntervalSeconds = 120
-	}
-	if cfg.Graph.ExtractionModel == "" {
-		cfg.Graph.ExtractionModel = "deepseek-v4-flash:cloud"
-	}
-	// Graph extraction reuses the Ollama endpoint configured for embedding
-	// unless explicitly overridden — one less thing to keep in sync.
-	if cfg.Graph.OllamaURL == "" {
-		cfg.Graph.OllamaURL = cfg.Embed.OllamaURL
-	}
-	if cfg.Graph.ResolutionBlockSize <= 0 {
-		cfg.Graph.ResolutionBlockSize = 100
-	}
-	if cfg.Graph.ActivationCutoff == nil {
-		cutoff := -10.0
-		cfg.Graph.ActivationCutoff = &cutoff
-	}
 	if cfg.Consolidation.DecayDefault <= 0 {
 		cfg.Consolidation.DecayDefault = 1.0
 	}
@@ -348,12 +286,6 @@ func loadConfig(path string) (*Config, error) {
 	if cfg.Consolidation.PromoteLive == nil {
 		live := false
 		cfg.Consolidation.PromoteLive = &live
-	}
-	if cfg.Ontology.Mode == "" {
-		cfg.Ontology.Mode = "warn"
-	}
-	if cfg.Ontology.Mode != "warn" && cfg.Ontology.Mode != "reject" {
-		return nil, fmt.Errorf("ontology.mode must be warn or reject")
 	}
 
 	// Surface flags that are present in config but consumed by nothing, so a

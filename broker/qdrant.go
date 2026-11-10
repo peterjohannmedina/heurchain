@@ -64,8 +64,7 @@ type QdrantSearchResult struct {
 //
 // The API key comes from QDRANT_API_KEY rather than broker.yaml: it is a secret,
 // and the YAML loader uses KnownFields(true), so adding a key there would make
-// older config files fail to boot. This matches how HEURCHAIN_KEK is already
-// handled. Unset = no header, so existing deployments keep working
+// older config files fail to boot. Unset = no header, so existing deployments keep working
 // until QDRANT__SERVICE__API_KEY is configured on the Qdrant side.
 func NewQdrantClient(baseURL string, vectorSize int) *QdrantClient {
 	return &QdrantClient{
@@ -413,7 +412,7 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 	embedMS := time.Since(embedStart).Milliseconds()
 	ctx = context.WithValue(ctx, recallModelContextKey{}, queryModel)
 	retrievalStart := time.Now()
-	results, diagnostics, err := runRecallSearchWithGraph(ctx, s.rdb, tenantID, req.Text, req.AgentID, req.Tags, queryVec, req.Limit, req.QdrantCandidates, &graphReadContext{db: s.db, enabled: graphTenantEnabled(tenantID)}, req.RecallOptions)
+	results, diagnostics, err := runRecallSearch(ctx, s.rdb, tenantID, req.Text, req.AgentID, req.Tags, queryVec, req.Limit, req.QdrantCandidates, req.RecallOptions)
 	diagnostics.EmbeddingCacheHit = cacheHit
 	if req.Mode != "lexical" {
 		diagnostics.EmbeddingModel = s.activeEmbedModel()
