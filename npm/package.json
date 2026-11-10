@@ -1,6 +1,6 @@
 {
   "name": "heurchain",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Setup guide and agent configuration for the self-hosted HeurChain memory broker (0.6.1): persistent, hybrid-search memory shared by every AI agent over MCP or HTTP",
   "keywords": [
     "mcp",

@@ -1,0 +1,28 @@
+flowchart TB
+    subgraph LIFE["Lifecycle (background)"]
+        direction TB
+        l1["Every access raises a memory's<br/>activation; time lowers it"] --> l2{"Below<br/>threshold?"}
+        l2 -- "no" --> l3["Stays in the active set"]
+        l2 -- "yes (promote_live: true)" --> l4[("Vault: kept and exportable,<br/>no longer searched")]
+    end
+
+    subgraph RECALL["Recall: memory → agent"]
+        direction TB
+        r1(["Agent: POST /search<br/>or heurchain_search"]) --> r2["Embed the query<br/>(cached)"]
+        r2 --> r3["BM25 candidates<br/>from Redis"]
+        r2 --> r4["Dense candidates<br/>from Qdrant"]
+        r3 --> r5["Reciprocal rank fusion"]
+        r4 --> r5
+        r5 --> r6["Load text from Redis,<br/>apply agent / tag / date filters"]
+        r6 --> r7(["Ranked memories +<br/>retrieval diagnostics"])
+    end
+
+    subgraph STORE["Store: agent → memory"]
+        direction TB
+        s1(["Agent: POST /store<br/>or heurchain_store"]) --> s2["Check API key, tenant,<br/>rate limit"]
+        s2 --> s3["Embed the text<br/>(Ollama / OpenAI-compatible)"]
+        s3 --> s4[("Redis: memory record<br/>text · tags · agent · session")]
+        s4 --> s5[("Redis: BM25 terms")]
+        s4 --> s6[("Qdrant: vector point")]
+        s4 --> s7[("SQLite: audit log + usage")]
+    end

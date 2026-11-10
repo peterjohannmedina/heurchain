@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    participant A as Agent
+    participant B as HeurChain broker
+    A->>B: GET /memory/manifest
+    B-->>A: what is already stored
+    A->>B: POST /session/start {agent_id}
+    B-->>A: session_id
+    A->>B: GET /agent/{agent_id}
+    B-->>A: recent memories of this agent
+    loop During work
+        A->>B: POST /search {text}
+        B-->>A: ranked memories
+        A->>B: POST /store {text, tags, metadata.session_id}
+        B-->>A: id, indexed
+    end
+    A->>B: POST /session/end {session_id}
+    A->>B: POST /store {session summary}
+    Note over A,B: The next session, or another agent,<br/>starts again from the manifest and recall.

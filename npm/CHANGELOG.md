@@ -1,5 +1,11 @@
 # Changelog (npm package)
 
+## [2.0.1] - 2026-11-10
+
+### Changed
+- README: states up front that this package is the agent kit and the server comes from the
+  GitHub repository; adds architecture, store/recall and session-protocol diagrams.
+
 ## [2.0.0] - 2026-11-10
 
 ### Changed (breaking)

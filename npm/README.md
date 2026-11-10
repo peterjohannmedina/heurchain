@@ -3,31 +3,43 @@
 **One memory system for every AI agent you run, on your own infrastructure.**
 
 HeurChain is a persistent memory broker for AI agents. Claude Code, Codex, Gemini, local
-models and any HTTP or MCP client share one store: they write facts, decisions and session
-summaries, and recall them later with hybrid search (BM25 + dense vectors, fused with RRF).
+models and any HTTP or MCP client share one store. They write facts, decisions and session
+summaries, and later recall them with hybrid search: keyword (BM25) and meaning (dense
+vectors), fused into one ranking.
 
-> **2.0.0 is a documentation and agent-configuration package.** Since 2.0.0, HeurChain is a
-> self-hosted Go broker (version **0.6.1**) run with Docker Compose or systemd. This package
-> no longer contains a server. It carries the setup guide and the machine-readable files
-> agents use to wire themselves to your broker.
+> ### This package is the agent kit, not the server
 >
-> The 1.x Node.js server (`server.js`) is deprecated. Its data model differs from the broker;
-> see [Upgrading from 1.x](#upgrading-from-1x).
+> `npm install heurchain` gives you the files agents use to connect to a HeurChain broker:
+> `AGENT_CONFIG.json` (a machine-readable manifest of the API, MCP tools and session
+> protocol) and `AGENT_ONBOARDING.md`. **It does not run anything.**
+>
+> **To run HeurChain**, clone the GitHub repository and start it with Docker Compose. That
+> repository is the complete self-hosted package: the Go broker 0.6.1, Redis, Qdrant and an
+> embedding model. See [Run the broker](#run-the-broker) below.
+>
+> Versions 1.x were a Node.js server. They are deprecated and still installable as
+> `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x).
 
 Source, install guide and research: **https://github.com/peterjohannmedina/heurchain**
 
-## What's in this package
+## How it works
 
-| File | For |
-|---|---|
-| `AGENT_CONFIG.json` | Machine-readable manifest: auth headers, MCP and HTTP connection, session protocol, every HTTP operation and MCP tool of broker 0.6.1 |
-| `AGENT_ONBOARDING.md` | The broker's own agent guide (the same text it serves at `GET /`) |
-| `README.md` | This file |
+![HeurChain architecture](https://raw.githubusercontent.com/peterjohannmedina/heurchain/master/docs/diagrams/architecture.svg)
 
-```js
-const config = require('heurchain/AGENT_CONFIG.json');
-console.log(config.authentication.headers);
-```
+The broker is one Go binary on one port. Agents reach it over **MCP** or **HTTP + JSON**,
+and every request carries an API key and a tenant ID (one tenant per person, team or
+project). Redis holds the memory records and the keyword index, Qdrant holds the vectors, an
+embedder (Ollama or any OpenAI-compatible API) turns text into vectors, and a SQLite file
+holds tenants, keys and the audit log. All of it runs on your machine.
+
+![Store, recall and lifecycle](https://raw.githubusercontent.com/peterjohannmedina/heurchain/master/docs/diagrams/dataflow.svg)
+
+- **Store**: embed the text, save the record in Redis, index it for keywords (Redis) and for
+  meaning (Qdrant).
+- **Recall**: search both indexes and fuse the two rankings with reciprocal rank fusion, so
+  memories that match on exact words and on meaning come first.
+- **Lifecycle**: memories that go unused fade; a background worker can move them into a
+  vault that is kept and exportable but no longer searched (off until you enable it).
 
 ## Run the broker
 
@@ -42,8 +54,9 @@ docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
 curl -s http://127.0.0.1:8080/health
 ```
 
-The stack runs the broker, Redis, Qdrant and Ollama, published on `127.0.0.1` only. The
-full guide (native systemd install, TLS, backups) is
+The stack runs the broker, Redis, Qdrant and Ollama, published on `127.0.0.1` only. These
+steps are tested end to end on every broker or deploy change. The full guide (native
+systemd install, TLS, backups) is
 [docs/install.md](https://github.com/peterjohannmedina/heurchain/blob/master/docs/install.md).
 
 Create a tenant and API key (the key is shown once):
@@ -74,18 +87,32 @@ claude mcp add --transport http heurchain http://127.0.0.1:8080/mcp/sse \
 Read the setup instructions in the heurchain npm package (README.md and
 AGENT_CONFIG.json, https://www.npmjs.com/package/heurchain), then connect to the
 HeurChain broker at http://<your-host>:8080 using the API key and tenant ID I give
-you. Follow the session protocol in AGENT_CONFIG.json: check the manifest and start a
-session at startup, store and search during work, end the session with a summary.
+you. Follow the session protocol in AGENT_CONFIG.json.
 ```
 
-## Session protocol (short form)
+## Session protocol
+
+![Agent session protocol](https://raw.githubusercontent.com/peterjohannmedina/heurchain/master/docs/diagrams/session.svg)
 
 1. `GET /memory/manifest`: see what is already stored before asking the user.
 2. `POST /session/start` with your `agent_id`; pass the returned `session_id` as
    `metadata.session_id` on every store.
 3. `GET /agent/{agent_id}`: recall your recent memories.
-4. During work: `POST /store` for facts and decisions, `POST /search` before asking.
+4. During work: `POST /search` before asking, `POST /store` for facts and decisions.
 5. At the end: `POST /session/end`, then store a concise summary.
+
+## What's in this package
+
+| File | For |
+|---|---|
+| `AGENT_CONFIG.json` | Machine-readable manifest: auth headers, MCP and HTTP connection, session protocol, every HTTP operation and MCP tool of broker 0.6.1 |
+| `AGENT_ONBOARDING.md` | The broker's own agent guide (the same text it serves at `GET /`) |
+| `README.md` | This file |
+
+```js
+const config = require('heurchain/AGENT_CONFIG.json');
+console.log(config.authentication.headers);
+```
 
 ## Upgrading from 1.x
 

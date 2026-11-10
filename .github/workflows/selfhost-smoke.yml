@@ -106,10 +106,11 @@ jobs:
           echo "$CALL" | head -c 800; echo
           echo "$CALL" | grep -q 5433
 
-      - name: Memory survives a restart
+      - name: Memory survives a full stack restart
         run: |
           set -euo pipefail
-          $COMPOSE restart broker
+          $COMPOSE down          # keeps the named volumes
+          $COMPOSE up -d
           for i in $(seq 1 60); do curl -fsS "$BASE/health" >/dev/null 2>&1 && break; sleep 2; done
           curl -fsS -H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" -H 'Content-Type: application/json' \
             -X POST "$BASE/search" -d '{"text":"staging database port"}' | grep -q 5433

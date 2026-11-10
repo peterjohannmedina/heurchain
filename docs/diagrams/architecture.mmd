@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph AGENTS["Your agents"]
+        direction LR
+        A1["Claude Code · Codex · Gemini<br/>any MCP client"]
+        A2["Scripts · services · local models<br/>any HTTP client"]
+    end
+
+    P["TLS reverse proxy<br/>(only for remote agents)"]
+
+    subgraph B["HeurChain broker 0.6.1 · one Go binary · port 8080"]
+        direction LR
+        G["Auth<br/>API key + tenant headers<br/>per-key rate limit"]
+        API["REST API + MCP server<br/>store · search · sessions · recall"]
+        W["Background workers<br/>consolidation: decay to vault<br/>knowledge graph: off by default"]
+        G --> API
+    end
+
+    E["Embedder<br/>Ollama nomic-embed-text<br/>or OpenAI-compatible API"]
+    R[("Redis<br/>memory records · BM25 index<br/>sessions · vault")]
+    Q[("Qdrant<br/>dense vectors")]
+    S[("SQLite file<br/>tenants · API keys<br/>audit log")]
+
+    A1 -- "MCP" --> P
+    A2 -- "HTTP + JSON" --> P
+    P --> G
+    API --> E
+    API --> R
+    API --> Q
+    API --> S
+    W --> R
+    W --> Q
