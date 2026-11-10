@@ -1,0 +1,721 @@
+<title>HeurChain vs Mem0 on LoCoMo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+/* Layout: one reading column (~56rem) for a lab report; summary and results first, evidence charts on raised panels, then the plan and the literature */
+:root {
+  --bg: #f4f6f8;
+  --surface: #fdfdfe;
+  --note: #e9eef3;
+  --ink: #131820;
+  --ink-2: #454d5a;
+  --muted: #687080;
+  --rule: #dbe0e6;
+  --axis: #b4bbc6;
+  --accent: #1d5c86;
+  --heur: #2a78d6;
+  --mem0: #eb6834;
+  --neutral-mark: #8b94a1;
+  --on-mem0: #131820;
+  --flag: #c98500;
+  --hover: rgba(19, 24, 32, 0.045);
+  --tip-bg: #131820;
+  --tip-ink: #f4f6f8;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216;
+    --surface: #161a20;
+    --note: #1b2129;
+    --ink: #eef1f5;
+    --ink-2: #b6bdc8;
+    --muted: #8b93a0;
+    --rule: #29303a;
+    --axis: #3c4450;
+    --accent: #8dbde6;
+    --heur: #3987e5;
+    --mem0: #d95926;
+    --neutral-mark: #6b7482;
+    --on-mem0: #0f1216;
+    --flag: #fab219;
+    --hover: rgba(255, 255, 255, 0.05);
+    --tip-bg: #eef1f5;
+    --tip-ink: #0f1216;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216;
+  --surface: #161a20;
+  --note: #1b2129;
+  --ink: #eef1f5;
+  --ink-2: #b6bdc8;
+  --muted: #8b93a0;
+  --rule: #29303a;
+  --axis: #3c4450;
+  --accent: #8dbde6;
+  --heur: #3987e5;
+  --mem0: #d95926;
+  --neutral-mark: #6b7482;
+  --on-mem0: #0f1216;
+  --flag: #fab219;
+  --hover: rgba(255, 255, 255, 0.05);
+  --tip-bg: #eef1f5;
+  --tip-ink: #0f1216;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  max-width: 56rem;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 40px 72px;
+  display: grid;
+  gap: 56px;
+}
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+p, li { max-width: 42rem; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -0.005em; }
+h1 { font-size: clamp(2rem, 5.2vw, 2.75rem); line-height: 1.12; }
+h2 { font-size: 1.5rem; line-height: 1.25; }
+h3 { font-size: 1.2rem; line-height: 1.3; }
+section { display: grid; gap: 16px; min-width: 0; }
+section > p, section > ul { margin: 0; }
+ul { padding-left: 1.2rem; display: grid; gap: 8px; margin: 0; }
+.eyebrow {
+  margin: 0;
+  font: 500 0.75rem/1.4 var(--font-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.num, .cnt, td, .chip { font-variant-numeric: tabular-nums; }
+
+/* Masthead */
+.masthead { display: grid; gap: 14px; }
+.dek { font-size: 1.25rem; line-height: 1.45; color: var(--ink-2); margin: 0; max-width: 42rem; }
+.status {
+  display: flex; gap: 10px; align-items: baseline;
+  margin: 6px 0 0; padding: 10px 14px;
+  background: var(--note); border-radius: 6px;
+  font-size: 0.95rem; color: var(--ink-2); max-width: none;
+}
+.status strong { color: var(--ink); }
+.status-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--flag); transform: translateY(-1px); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { padding: 9px 12px; text-align: right; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+thead th { font-weight: 600; font-size: 0.82rem; color: var(--ink-2); vertical-align: bottom; }
+thead .grp { text-align: center; font: 500 0.7rem/1.3 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--axis); }
+tbody th { font-weight: 600; }
+tr.total th, tr.total td { border-top: 1px solid var(--axis); border-bottom: none; }
+.pct { display: block; }
+.cnt { display: block; font: 400 0.8rem/1.3 var(--font-data); color: var(--muted); }
+.pub { color: var(--muted); }
+th.pub-start, td.pub-start { border-left: 1px solid var(--rule); }
+.net { white-space: nowrap; font-weight: 600; }
+.sw { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; transform: translateY(-1px); }
+.sw-h { background: var(--heur); }
+.sw-m { background: var(--mem0); }
+.sw-n { background: var(--neutral-mark); }
+.note { font-size: 0.9rem; color: var(--muted); max-width: 46rem; }
+.left-table th, .left-table td { text-align: left; }
+.left-table td.n, .left-table th.n { text-align: right; white-space: nowrap; }
+.convs { font: 400 0.82rem/1.5 var(--font-data); color: var(--ink-2); white-space: nowrap; }
+.chip {
+  display: inline-block; margin-right: 6px; padding: 1px 8px;
+  border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+  border: 1px solid var(--axis); color: var(--ink-2); white-space: nowrap;
+}
+.chip.real { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.chip.border { border-color: var(--ink-2); color: var(--ink); }
+.chip.weak { border-style: dashed; }
+.lit td { font-size: 0.9rem; min-width: 9rem; }
+.lit td:first-child { min-width: 11rem; }
+.lit .group th { font: 500 0.7rem/1.3 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 18px; border-bottom: 1px solid var(--axis); }
+.lit .id { display: block; font: 400 0.78rem/1.4 var(--font-data); color: var(--muted); }
+
+/* Findings */
+.findings { list-style: none; padding: 0; display: grid; gap: 14px; }
+.findings li { display: grid; gap: 2px; padding-left: 14px; border-left: 2px solid var(--rule); max-width: 44rem; }
+.findings strong { font-weight: 600; }
+
+/* Stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 12px; }
+.tile { display: grid; gap: 4px; align-content: start; padding: 14px 16px; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; min-width: 0; }
+.tile .value { font: 600 1.9rem/1.1 var(--font-body); }
+.tile .label { font-size: 0.92rem; color: var(--ink-2); }
+
+/* Evidence comparison */
+.compare { display: grid; gap: 14px; }
+.case { display: grid; gap: 10px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; min-width: 0; }
+.case-q { margin: 0; font-weight: 600; max-width: none; }
+.case-q .cnt { display: inline; margin-left: 6px; }
+.case-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 12px; }
+.side { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.side-label { font: 500 0.72rem/1.3 var(--font-data); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.side blockquote { margin: 0; padding: 8px 12px; border-left: 2px solid var(--axis); background: var(--note); border-radius: 0 6px 6px 0; font-size: 0.95rem; max-width: none; }
+.side .hdr { display: block; font: 400 0.76rem/1.4 var(--font-data); color: var(--muted); }
+.side .ans { margin: 0; font-size: 0.95rem; max-width: none; }
+
+/* Charts */
+.chart {
+  position: relative; margin: 0; padding: 16px 18px 12px;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px;
+  display: grid; gap: 10px; min-width: 0;
+}
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.875rem; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.key-bar { width: 14px; height: 10px; border-radius: 2px; }
+.plot { min-height: 120px; }
+.plot svg { display: block; overflow: visible; }
+.chart figcaption { font-size: 0.85rem; color: var(--muted); }
+.grid { stroke: var(--rule); stroke-width: 1; }
+.axis { stroke: var(--axis); stroke-width: 1; }
+.tick { fill: var(--muted); font: 12px var(--font-body); font-variant-numeric: tabular-nums; }
+.tick-cap { fill: var(--ink-2); font: 12px var(--font-body); }
+.row-label { fill: var(--ink); font: 14px var(--font-body); }
+.row-label.strong { font-weight: 600; }
+.val { fill: var(--ink); font: 600 13px var(--font-body); font-variant-numeric: tabular-nums; }
+.inval { fill: var(--on-mem0); font: 600 12px var(--font-body); font-variant-numeric: tabular-nums; }
+.mark-h { fill: var(--heur); }
+.mark-m { fill: var(--mem0); }
+.mark-n { fill: var(--neutral-mark); }
+.grid, .axis, .tick, .tick-cap, .row-label, .val, .inval, .mark-h, .mark-m, .mark-n { pointer-events: none; }
+.hit { fill: transparent; cursor: default; outline: none; }
+.hit:hover, .hit:focus { fill: var(--hover); }
+.tip {
+  position: absolute; z-index: 2; pointer-events: none;
+  background: var(--tip-bg); color: var(--tip-ink);
+  padding: 8px 10px; border-radius: 6px;
+  font-size: 0.82rem; line-height: 1.45; max-width: 260px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Research directions */
+.directions { display: grid; gap: 20px; }
+.direction {
+  display: grid; gap: 12px; padding: 20px 22px;
+  background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; min-width: 0;
+}
+.direction header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.stake { font: 500 0.82rem/1.4 var(--font-data); color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; }
+.direction h4 {
+  margin: 4px 0 0; font: 500 0.72rem/1.3 var(--font-data);
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+.direction p, .direction ul, .direction ol { margin: 0; }
+.direction ol { padding-left: 1.3rem; display: grid; gap: 8px; }
+.evidence { font-size: 0.97rem; color: var(--ink-2); padding: 10px 14px; background: var(--note); border-radius: 6px; max-width: none; }
+.direction.quiet { background: transparent; }
+
+.sources li { font-size: 0.95rem; }
+code, .path { font: 0.85em var(--font-data); overflow-wrap: anywhere; }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 16px; }
+
+@media (max-width: 560px) {
+  .page { padding-inline: 16px; gap: 44px; }
+  .direction, .case { padding: 16px; }
+  .chart { padding: 14px 12px 10px; }
+  th, td { padding: 8px 8px; }
+}
+</style>
+
+<main class="page">
+  <header class="masthead">
+    <p class="eyebrow">HeurChain research · LoCoMo DEV split · 7 October 2026</p>
+    <h1>HeurChain vs Mem0 on LoCoMo</h1>
+    <p class="dek">Mem0 leads by nine answers out of 543, and temporal questions account for all of it. A trace of HeurChain's misses shows why: it hands the answerer relative dates such as "yesterday" and never resolves them.</p>
+    <p class="status"><span class="status-dot" aria-hidden="true"></span><span><strong>Provisional.</strong> Grading finished at 01:28 UTC on 7 October and the independent terminal verification passed. Treat the results as provisional until the team signs off.</span></p>
+  </header>
+
+  <section id="results" aria-labelledby="h-results">
+    <h2 id="h-results">Results</h2>
+    <div class="table-wrap">
+      <table class="results">
+        <thead>
+          <tr>
+            <th rowspan="2" scope="col">Category</th>
+            <th colspan="3" class="grp" scope="colgroup">Local · same 543 questions</th>
+            <th colspan="2" class="grp pub-start" scope="colgroup">Published · context only</th>
+          </tr>
+          <tr>
+            <th scope="col">HeurChain + Luna</th>
+            <th scope="col">Mem0 + Luna</th>
+            <th scope="col">Net</th>
+            <th scope="col" class="pub-start">Mem0</th>
+            <th scope="col">Mem0-Graph</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Single-hop</th>
+            <td><strong class="pct">78.40%</strong><span class="cnt">225 / 287</span></td>
+            <td><span class="pct">73.87%</span><span class="cnt">212 / 287</span></td>
+            <td class="net"><span class="sw sw-h" aria-hidden="true"></span>HeurChain +13</td>
+            <td class="pub pub-start">67.13%</td>
+            <td class="pub">65.71%</td>
+          </tr>
+          <tr>
+            <th scope="row">Multi-hop</th>
+            <td><span class="pct">47.17%</span><span class="cnt">50 / 106</span></td>
+            <td><strong class="pct">53.77%</strong><span class="cnt">57 / 106</span></td>
+            <td class="net"><span class="sw sw-m" aria-hidden="true"></span>Mem0 +7</td>
+            <td class="pub pub-start">51.15%</td>
+            <td class="pub">47.19%</td>
+          </tr>
+          <tr>
+            <th scope="row">Temporal</th>
+            <td><span class="pct">62.30%</span><span class="cnt">76 / 122</span></td>
+            <td><strong class="pct">77.05%</strong><span class="cnt">94 / 122</span></td>
+            <td class="net"><span class="sw sw-m" aria-hidden="true"></span>Mem0 +18</td>
+            <td class="pub pub-start">55.51%</td>
+            <td class="pub">58.13%</td>
+          </tr>
+          <tr>
+            <th scope="row">Open-domain</th>
+            <td><strong class="pct">32.14%</strong><span class="cnt">9 / 28</span></td>
+            <td><span class="pct">21.43%</span><span class="cnt">6 / 28</span></td>
+            <td class="net"><span class="sw sw-h" aria-hidden="true"></span>HeurChain +3</td>
+            <td class="pub pub-start">72.93%</td>
+            <td class="pub">75.71%</td>
+          </tr>
+          <tr class="total">
+            <th scope="row">Overall</th>
+            <td><span class="pct">66.30%</span><span class="cnt">360 / 543</span></td>
+            <td><strong class="pct">67.96%</strong><span class="cnt">369 / 543</span></td>
+            <td class="net"><span class="sw sw-m" aria-hidden="true"></span>Mem0 +9</td>
+            <td class="pub pub-start">66.88%</td>
+            <td class="pub">68.44%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Local columns: frozen HeurChain (commit 216e39e) and frozen Mem0 OSS v3 (commit 94c3fe9) on the 543 category 1–4 questions from the four LoCoMo DEV conversations. Both arms used the same Luna answerer (gpt-6-luna, low effort), the same answer prompt, their own native top-20 retrieval and a 16,384-byte evidence cap. One Luna pass graded each answer with the historical Mem0 binary rubric. Published columns come from the Mem0 paper (Table 1 for categories, Table 2 for overall).</p>
+  </section>
+
+  <section id="findings" aria-labelledby="h-findings">
+    <h2 id="h-findings">What the data shows</h2>
+    <ul class="findings">
+      <li><strong>Temporal decides the result.</strong> Mem0's +18 on temporal is twice the overall gap, and Mem0 leads or ties on temporal in all four DEV conversations. If HeurChain matched Mem0 there and changed nothing else, it would lead by 9.</li>
+      <li><strong>The temporal gap is an answer-side problem, not a retrieval one.</strong> Every labeled evidence turn reached HeurChain's context for 106 of 122 temporal questions. 26 of its 46 misses come from relative dates that were never resolved, and Mem0 answered 19 of those correctly.</li>
+      <li><strong>Multi-hop is a retrieval problem.</strong> All labeled evidence reached HeurChain's context for only 30 of 106 multi-hop questions. 46 of its 56 multi-hop misses were missing at least one evidence turn.</li>
+      <li><strong>The overall gap is not established.</strong> 143 questions split between the systems: 67 went only to HeurChain and 76 only to Mem0. Conversation 41 contributes +13 for Mem0; without it, HeurChain leads by 4.</li>
+      <li><strong>Two published values are not usable targets.</strong> The published Overall doesn't follow from the paper's own category scores, and the open-domain column may not cover the same questions.</li>
+    </ul>
+  </section>
+
+  <section id="net" aria-labelledby="h-net">
+    <h2 id="h-net">Where the nine answers went</h2>
+    <p>Net correct answers by category. A bar to the right means HeurChain answered more of that category correctly; a bar to the left means Mem0 did.</p>
+    <figure class="chart" id="chart-net">
+      <div class="legend">
+        <span><span class="key-bar sw-h"></span>HeurChain ahead</span>
+        <span><span class="key-bar sw-m"></span>Mem0 ahead</span>
+      </div>
+      <div class="plot"></div>
+      <div class="tip" hidden></div>
+      <figcaption>Hover or tab to a row for counts. Values are in the Results table.</figcaption>
+    </figure>
+  </section>
+
+  <section id="temporal" aria-labelledby="h-temporal">
+    <h2 id="h-temporal">Why HeurChain misses temporal questions</h2>
+    <p>We traced all 46 temporal questions HeurChain missed back to the evidence it handed Luna, using only the frozen DEV artifacts and no model calls. Both arms used the same answer prompt, which says to answer UNKNOWN when the evidence is insufficient. The difference is what each memory put in front of that prompt.</p>
+    <div class="tiles">
+      <div class="tile"><span class="value">106 of 122</span><span class="label">temporal questions had every labeled evidence turn in HeurChain's context</span></div>
+      <div class="tile"><span class="value">0 of 2,440</span><span class="label">HeurChain evidence turns state a date in their text. The only date is the session header.</span></div>
+      <div class="tile"><span class="value">74%</span><span class="label">of Mem0's memories (846 of 1,149) state an explicit date, resolved when the memory was written</span></div>
+    </div>
+    <p>HeurChain answered UNKNOWN on 30 of the 122 temporal questions, against 18 for Mem0, and left 7 answers as bare relative phrases such as "Last year". Mem0 left none.</p>
+
+    <figure class="chart" id="chart-causes">
+      <div class="legend">
+        <span><span class="key-bar sw-m"></span>Mem0 answered correctly</span>
+        <span><span class="key-bar sw-n"></span>Mem0 also missed</span>
+      </div>
+      <div class="plot"></div>
+      <div class="tip" hidden></div>
+      <figcaption>HeurChain's 46 temporal misses by cause. The three relative-time rows total 26 misses; Mem0 answered 19 of them correctly.</figcaption>
+    </figure>
+
+    <div class="compare">
+      <div class="case">
+        <p class="case-q">When did Melanie make a plate in pottery class? <span class="cnt">conv-26-qa-058 · gold: 24 August 2023</span></p>
+        <div class="case-cols">
+          <div class="side">
+            <span class="side-label"><span class="sw sw-h" aria-hidden="true"></span>HeurChain context, rank 1</span>
+            <blockquote><span class="hdr">Session timestamp: 1:33 pm on 25 August, 2023</span>"Yeah, I made it in pottery class yesterday."</blockquote>
+            <p class="ans">Answer: <strong>UNKNOWN</strong> · judged wrong</p>
+          </div>
+          <div class="side">
+            <span class="side-label"><span class="sw sw-m" aria-hidden="true"></span>Mem0 memory, rank 1</span>
+            <blockquote>"Melanie made a plate decorated with flowers in pottery class around August 24, 2023."</blockquote>
+            <p class="ans">Answer: <strong>Around August 24, 2023</strong> · judged correct</p>
+          </div>
+        </div>
+      </div>
+      <div class="case">
+        <p class="case-q">When Jon has lost his job as a banker? <span class="cnt">conv-30-qa-000 · gold: 19 January 2023</span></p>
+        <div class="case-cols">
+          <div class="side">
+            <span class="side-label"><span class="sw sw-h" aria-hidden="true"></span>HeurChain context, rank 1</span>
+            <blockquote><span class="hdr">Session timestamp: 4:04 pm on 20 January, 2023</span>"Lost my job as a banker yesterday, so I'm gonna take a shot at starting my own business."</blockquote>
+            <p class="ans">Answer: <strong>January 20, 2023</strong> · judged wrong (session date, not the event date)</p>
+          </div>
+          <div class="side">
+            <span class="side-label"><span class="sw sw-m" aria-hidden="true"></span>Mem0 memory, rank 1</span>
+            <blockquote>"Jon lost his job as a banker around January 19, 2023, and decided to start his own business…"</blockquote>
+            <p class="ans">Answer: <strong>Around January 19, 2023</strong> · judged correct</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="left-table causes">
+        <thead><tr><th scope="col">Cause</th><th scope="col" class="n">Misses</th><th scope="col" class="n">Mem0 correct</th><th scope="col">What it looks like</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Relative time: abstained</th><td class="n">16</td><td class="n">10</td><td>Evidence says "yesterday", "last year" or "this past weekend"; Luna answers UNKNOWN</td></tr>
+          <tr><th scope="row">Relative time: copied unresolved</th><td class="n">5</td><td class="n">5</td><td>Answers "Last year." or "Last summer." where the gold is 2022</td></tr>
+          <tr><th scope="row">Relative time: session date, no offset</th><td class="n">5</td><td class="n">4</td><td>Answers the session date when the event was the day or week before</td></tr>
+          <tr><th scope="row">Not retrieved: date-scoped question</th><td class="n">6</td><td class="n">2</td><td>"Which city was Calvin at on October 3, 2023?" The turn only says "Yesterday… in Boston" under a 4 October header</td></tr>
+          <tr><th scope="row">Not retrieved: other</th><td class="n">5</td><td class="n">4</td><td>Labeled evidence outside the top 20</td></tr>
+          <tr><th scope="row">Arithmetic across turns</th><td class="n">4</td><td class="n">0</td><td>Durations and "how many weeks between" questions</td></tr>
+          <tr><th scope="row">Other answer errors</th><td class="n">3</td><td class="n">2</td><td>Used the wrong turn, or abstained although "4 years" was stated outright</td></tr>
+          <tr><th scope="row">Gold label problem</th><td class="n">2</td><td class="n">0</td><td>Evidence says "last Saturday" but gold says Sunday; a gold answer reads "3` July"</td></tr>
+          <tr class="total"><th scope="row">Total</th><td class="n">46</td><td class="n">27</td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">One reviewer assigned each cause after reading the question, gold answer, both answers and the labeled evidence turns. The byte cap never cut a labeled evidence turn; the 20-unit limit is what binds. Script, per-question output and labels are in <span class="path">research/temporal-diagnostic/</span>.</p>
+  </section>
+
+  <section id="noise" aria-labelledby="h-noise">
+    <h2 id="h-noise">How solid each gap is</h2>
+    <p>Four fixed DEV conversations can't support a population p-value, so the useful test is direction: does the same system lead in each conversation? A <em>split</em> is a question one system answered correctly and the other did not.</p>
+    <div class="table-wrap">
+      <table class="left-table verdicts">
+        <thead>
+          <tr><th scope="col">Category</th><th scope="col" class="n">Both right</th><th scope="col" class="n">HeurChain only</th><th scope="col" class="n">Mem0 only</th><th scope="col" class="n">Both wrong</th><th scope="col">Mem0 minus HeurChain, by conversation (26 · 30 · 41 · 50)</th><th scope="col">Reading</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Temporal</th><td class="n">67</td><td class="n">9</td><td class="n">27</td><td class="n">19</td><td class="convs">+4 · 0 · +10 · +4</td><td><span class="chip real">Consistent</span>Mem0 ahead in 3, tied in 1</td></tr>
+          <tr><th scope="row">Multi-hop</th><td class="n">37</td><td class="n">13</td><td class="n">20</td><td class="n">36</td><td class="convs">+2 · 0 · +2 · +3</td><td><span class="chip border">Consistent, small</span>Mem0 ahead in 3, tied in 1</td></tr>
+          <tr><th scope="row">Single-hop</th><td class="n">183</td><td class="n">42</td><td class="n">29</td><td class="n">33</td><td class="convs">−6 · −4 · +2 · −5</td><td><span class="chip border">Mostly consistent</span>HeurChain ahead in 3 of 4</td></tr>
+          <tr><th scope="row">Open-domain</th><td class="n">6</td><td class="n">3</td><td class="n">0</td><td class="n">19</td><td class="convs">−1 · none · −1 · −1</td><td><span class="chip weak">Too small</span>One question each way</td></tr>
+          <tr class="total"><th scope="row">Overall</th><td class="n">293</td><td class="n">67</td><td class="n">76</td><td class="n">107</td><td class="convs">−1 · −4 · +13 · +1</td><td><span class="chip">Not established</span>Rests on conversation 41</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Leaving one conversation out moves the overall margin between −1.02 and +2.81 points, and the whole-conversation sign-swap fraction is 14/16, both from the matched comparison report. Conversation 30 has no open-domain questions.</p>
+  </section>
+
+  <section id="published" aria-labelledby="h-published">
+    <h2 id="h-published">Why the published columns are context only</h2>
+    <ul>
+      <li><strong>The published Overall doesn't follow from the paper's category scores.</strong> Weighting Table 1 by LoCoMo's category sizes (841 / 282 / 321 / 96) gives 62.1% for Mem0 and 61.4% for Mem0-Graph, not 66.88% and 68.44%. The order of the two also flips. Don't use 68.44% as a bar.</li>
+      <li><strong>The category mapping is unpublished.</strong> Mem0 never stated which LoCoMo category number carries which label (<a href="https://github.com/mem0ai/mem0/issues/2609">mem0ai/mem0#2609</a>), and at least one other team shipped transposed labels before retracting a claim (<a href="https://widemem.ai/benchmarks">widemem</a>). Local Mem0 lands within 3–7 points of its published single-hop and multi-hop scores but 51.5 points below its published open-domain score.</li>
+      <li><strong>Local Mem0 is not the paper's system.</strong> It is frozen Mem0 OSS v3 with Luna as extractor, answerer and judge. The paper used its 2025 architecture, GPT-4o-mini and a ten-run judge average. Those differences are the likely reason local Mem0 beats its paper on temporal by 21.5 points, and the matched report makes no claim against the published scores.</li>
+    </ul>
+  </section>
+
+  <section id="targets" aria-labelledby="h-targets">
+    <h2 id="h-targets">What beating every metric takes</h2>
+    <p>Local Mem0 is the bar that matters. HeurChain needs two gains and two holds.</p>
+    <div class="table-wrap">
+      <table class="targets">
+        <thead>
+          <tr><th scope="col">Category</th><th scope="col">HeurChain now</th><th scope="col">Mem0 (local)</th><th scope="col">HeurChain needs</th><th scope="col">Change</th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Temporal</th><td>76 / 122</td><td>94 / 122</td><td>≥ 95 (77.9%)</td><td class="net">+19</td></tr>
+          <tr><th scope="row">Multi-hop</th><td>50 / 106</td><td>57 / 106</td><td>≥ 58 (54.7%)</td><td class="net">+8</td></tr>
+          <tr><th scope="row">Single-hop</th><td>225 / 287</td><td>212 / 287</td><td>≥ 213</td><td class="net">can lose ≤ 12</td></tr>
+          <tr><th scope="row">Open-domain</th><td>9 / 28</td><td>6 / 28</td><td>≥ 7</td><td class="net">can lose ≤ 2</td></tr>
+          <tr class="total"><th scope="row">Overall</th><td>360 / 543</td><td>369 / 543</td><td>≥ 387 (71.3%)</td><td class="net">+27</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>The 19 relative-time misses that Mem0 answered correctly equal the +19 the temporal target needs, if nothing else moves. Hitting the local targets also clears published multi-hop (51.15%) and the published Overall (68.44%, or 372 / 543). Only published open-domain (75.71%) would remain: 22 of 28, on the least comparable cell. Hold that target until the category mapping is settled.</p>
+  </section>
+
+  <section id="plan" aria-labelledby="h-plan">
+    <h2 id="h-plan">Research directions</h2>
+    <p>Ranked by answers at stake. The answer prompt is shared by both arms in the matched protocol, so a HeurChain improvement has to change what HeurChain stores or retrieves, not the prompt.</p>
+    <div class="directions">
+
+      <article class="direction">
+        <header><h3>Temporal</h3><span class="stake"><span class="sw sw-m" aria-hidden="true"></span>Mem0 +18 · need +19</span></header>
+        <p class="evidence">The diagnostic found that retrieval is mostly fine (106 of 122 questions had all evidence in context). The misses come from relative time (26), date-scoped retrieval (6), other retrieval misses (5), arithmetic (4), other answer errors (3) and gold labels (2).</p>
+        <h4>Build, in order</h4>
+        <ol>
+          <li><strong>Resolve relative time when storing.</strong> Detect "yesterday", "last week", "last year" and similar phrases in each turn, compute the date or range from the session timestamp, and store it beside the raw words, for example "[yesterday = 24 Aug 2023]". Targets the 26 relative-time misses, 19 of which Mem0 answered. <a href="https://arxiv.org/abs/2502.01630">TReMu</a>, <a href="https://arxiv.org/abs/2601.07468">TSM</a> and <a href="https://arxiv.org/abs/2603.16862">Chronos</a> all do a version of this.</li>
+          <li><strong>Index the resolved date.</strong> Keep an event-date field separate from the session date, and match it against dates named in the question. Targets the 6 date-scoped retrieval misses. <a href="https://arxiv.org/abs/2410.10813">LongMemEval</a> calls this time-aware query expansion.</li>
+          <li><strong>Do date arithmetic in code.</strong> Route durations and "how long between" questions to a deterministic date calculation. Targets 4 misses that Mem0 also missed, so this is where HeurChain can pass it.</li>
+          <li><strong>Protect dates in any summary step.</strong> If consolidation is turned back on, instruct it to keep dates. <a href="https://arxiv.org/abs/2608.11775">The Sleeping Agent</a> found that gist compression drops dates; one added prompt sentence raised date preservation from 3% to 62%.</li>
+          <li><strong>Report the two gold-label problems</strong> (<code>conv-26-qa-005</code>, <code>conv-41-qa-048</code>) and score them both ways.</li>
+        </ol>
+      </article>
+
+      <article class="direction">
+        <header><h3>Multi-hop</h3><span class="stake"><span class="sw sw-m" aria-hidden="true"></span>Mem0 +7 · need +8</span></header>
+        <p class="evidence">All labeled evidence reached HeurChain's context for 30 of 106 multi-hop questions, some for 54 and none for 21 (one has no labels). HeurChain answered 20 of 30 with full evidence, 25 of 54 with partial and 4 of 21 with none. The 16 KB cap never cut evidence; the 20-unit limit binds.</p>
+        <h4>Build</h4>
+        <ul>
+          <li><strong>A gap-driven second pass.</strong> After the first retrieval, name the missing fact or entity and query again. <a href="https://arxiv.org/abs/2604.27695">EviMem</a> reports 85.2% on LoCoMo multi-hop this way, against 65.9% for MIRIX; <a href="https://arxiv.org/abs/2212.10509">IRCoT</a> is the older template.</li>
+          <li><strong>Entity expansion on the lexical path.</strong> Take names from the top-ranked turns and re-query on them. In <a href="https://arxiv.org/abs/2607.19359">ProGraph</a>, removing this kind of expansion cost 22.6 points on its multi-hop benchmark.</li>
+          <li><strong>Bigger units, same budget.</strong> Index segments of a few adjacent turns so each of the 20 slots carries more context (<a href="https://arxiv.org/abs/2502.05589">SeCom</a>).</li>
+          <li>Test every change against single-hop.</li>
+        </ul>
+      </article>
+
+      <article class="direction">
+        <header><h3>Single-hop: protect it</h3><span class="stake"><span class="sw sw-h" aria-hidden="true"></span>HeurChain +13 · budget 12</span></header>
+        <p>HeurChain leads in three of four conversations, most likely because it keeps raw turns where Mem0 keeps extracted facts that can drop detail. Add resolved dates beside the raw text; don't replace it. Gate every change on single-hop staying at 213 / 287 or above. There is headroom too: 39 of HeurChain's 62 single-hop misses had no labeled evidence in context.</p>
+      </article>
+
+      <article class="direction quiet">
+        <header><h3>Open-domain: low priority</h3><span class="stake"><span class="sw sw-h" aria-hidden="true"></span>HeurChain +3 · 28 questions</span></header>
+        <p>Both systems are weak here (21–32%), and 19 of the 28 questions defeated both. These LoCoMo questions mostly ask for an inference about a person. One question moves the score 3.6 points, so don't tune on this slice.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="literature" aria-labelledby="h-literature">
+    <h2 id="h-literature">What the literature says</h2>
+    <p>Papers on arXiv with a concrete mechanism for temporal or multi-hop memory. The pattern is consistent: resolve relative dates into absolute ones and index them, and make retrieval iterative or entity-linked for multi-hop.</p>
+    <div class="table-wrap">
+      <table class="left-table lit">
+        <thead><tr><th scope="col">Paper</th><th scope="col">Mechanism</th><th scope="col">Reported result</th><th scope="col">Use for HeurChain</th></tr></thead>
+        <tbody>
+          <tr class="group"><th colspan="4" scope="colgroup">Temporal</th></tr>
+          <tr><td><a href="https://arxiv.org/abs/2502.01630">TReMu</a><span class="id">Ge et al., 2025 · 2502.01630</span></td><td>Per-session event summaries with inferred dates; the model writes Python for date math</td><td>GPT-4o from 29.83 to 77.67 on a LoCoMo-derived temporal benchmark</td><td>Store resolved dates; do arithmetic in code</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2601.07468">Beyond Dialogue Time (TSM)</a><span class="id">Su et al., 2026 · 2601.07468</span></td><td>Index memories by when events happened, not when they were said; match the question's time intent</td><td>Up to 12.2 points absolute on LongMemEval and LoCoMo</td><td>Event-date field derived from relative phrases</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2603.16862">Chronos</a><span class="id">Sen et al., 2026 · 2603.16862</span></td><td>Event tuples with resolved datetime ranges in an event calendar beside a turn calendar</td><td>92.6–95.6% on LongMemEval-S; the event calendar alone accounts for a 58.9% gain in ablation</td><td>Side index of resolved events pointing back to raw turns</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2410.10813">LongMemEval</a><span class="id">Wu et al., 2025 · 2410.10813</span></td><td>Time-aware query expansion; fact-augmented keys; session decomposition</td><td>Large recall and QA gains (no single figure in the abstract)</td><td>Parse dates in the question to narrow the search window</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2501.13956">Zep</a><span class="id">Rasmussen et al., 2025 · 2501.13956</span></td><td>Temporally aware knowledge graph</td><td>Up to 18.5% higher accuracy and 90% lower latency on LongMemEval</td><td>Keep event time separate from record time</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2608.11775">The Sleeping Agent</a><span class="id">Kyrkewood, 2026 · 2608.11775</span></td><td>Diagnoses gist compression on LoCoMo</td><td>A one-sentence prompt change raised date preservation from 3.05% to 62.39% and temporal judge accuracy by 0.314</td><td>Guard dates in any consolidation step</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2512.20092">Memory-T1</a><span class="id">Du et al., 2025 · 2512.20092</span></td><td>Temporal and relevance filters prune history before evidence selection (RL)</td><td>7B model reaches 67.0% on Time-Dialog</td><td>The coarse time filter transfers without the RL</td></tr>
+          <tr class="group"><th colspan="4" scope="colgroup">Multi-hop</th></tr>
+          <tr><td><a href="https://arxiv.org/abs/2604.27695">EviMem</a><span class="id">Li et al., 2026 · 2604.27695</span></td><td>Detects what evidence is missing and refines the query in a loop</td><td>On LoCoMo vs MIRIX: temporal 73.3% → 81.6%, multi-hop 65.9% → 85.2%, 4.5× lower latency</td><td>Second retrieval pass that names the missing fact</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2212.10509">IRCoT</a><span class="id">Trivedi et al., 2023 · 2212.10509</span></td><td>Interleaves retrieval with reasoning steps</td><td>Up to 21 points better retrieval and 15 points better QA on multi-hop QA sets</td><td>Template for an iterative loop over hybrid retrieval</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2607.19359">ProGraph / MemHop</a><span class="id">Zhu, 2026 · 2607.19359</span></td><td>Entity-name expansion by substring match; exact dates co-extracted</td><td>Removing expansion: −22.6 points on MemHop. Dropping co-extracted dates: −8.6 on LoCoMo</td><td>Lexical entity expansion fits the BM25 path</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2405.14831">HippoRAG</a><span class="id">Gutiérrez et al., 2024 · 2405.14831</span></td><td>Knowledge graph plus Personalized PageRank</td><td>Up to 20% better multi-hop QA; matches iterative retrieval at 10–30× lower cost</td><td>Option if the disabled graph returns</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2502.05589">SeCom</a><span class="id">Pan et al., 2025 · 2502.05589</span></td><td>Topic-segment memory units with denoising</td><td>Segment units beat turn- and session-level units on LoCoMo</td><td>More context per top-20 slot</td></tr>
+          <tr class="group"><th colspan="4" scope="colgroup">Architecture and evaluation</th></tr>
+          <tr><td><a href="https://arxiv.org/abs/2604.14362">APEX-MEM</a><span class="id">Banerjee et al., 2026 · 2604.14362</span></td><td>Append-only, temporally grounded property graph; conflicts resolved at query time</td><td>88.88% on LoCoMo QA and 86.2% on LongMemEval</td><td>Append-only storage with read-time resolution suits one record per turn</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2605.24060">Same Ranking, Different Winner</a><span class="id">Panthi and Abdelfattah, 2026 · 2605.24060</span></td><td>Rescores saved rankings under different credited targets</td><td>Changing only the credited target alters nDCG on 83.4–94.0% of shared queries and can flip conclusions</td><td>State the scoring target when comparing retrieval metrics with Mem0</td></tr>
+          <tr><td><a href="https://arxiv.org/abs/2402.17753">LoCoMo</a><span class="id">Maharana et al., 2024 · 2402.17753</span></td><td>The benchmark</td><td>Models struggle with long-range temporal and causal dynamics and still trail humans</td><td>Benchmark of record</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Results are from each paper's abstract, checked on arXiv on 7 October 2026, and from each paper's own setup. None is comparable to our DEV scores.</p>
+  </section>
+
+  <section id="practice" aria-labelledby="h-practice">
+    <h2 id="h-practice">Evaluation practice</h2>
+    <ul>
+      <li><strong>Keep DEV and holdout separate.</strong> These 543 questions are the four DEV conversations. Diagnose and iterate here, then confirm once on the six sealed holdout conversations (997 category 1–4 questions).</li>
+      <li><strong>Report direction per conversation.</strong> Four conversations are too few for a population claim, so the holdout carries any generalization.</li>
+      <li><strong>Re-grade split questions with an independent judge.</strong> Luna answered and graded both arms in one pass. The historical rubric counts an answer correct if it "refers to the same date or time period", which makes temporal grading lenient and phrase-sensitive.</li>
+      <li><strong>Keep the arms matched.</strong> Same answer prompt, top-20 limit and 16 KB budget. Change only what each memory stores and retrieves.</li>
+    </ul>
+  </section>
+
+  <section id="sources" aria-labelledby="h-sources">
+    <h2 id="h-sources">Sources and method</h2>
+    <ul class="sources">
+      <li>Matched comparison report and verdicts: <span class="path">agent-projects/heurchain-baseline-scoring/mem0-oss-v3-comparison-v1/MATCHED-COMPARISON-REPORT.md</span></li>
+      <li>Temporal diagnostic (script, per-question output, manual labels): <span class="path">heurchain/research/temporal-diagnostic/</span></li>
+      <li>HeurChain answers and retrieval receipts: <span class="path">agent-projects/heurchain-luna-baseline/</span>. Mem0 answers and memories: <span class="path">agent-projects/heurchain-mem0-luna-comparison/</span></li>
+      <li>Mem0 paper, Table 1 and §3: <a href="https://arxiv.org/html/2504.19413v1#S3.T1">arxiv.org/html/2504.19413v1</a></li>
+      <li>LoCoMo dataset: <a href="https://github.com/snap-research/locomo">snap-research/locomo</a> (CC BY-NC 4.0)</li>
+      <li>The diagnostic read only frozen DEV files. It made no model calls, no retrieval calls and no holdout reads.</li>
+    </ul>
+  </section>
+
+  <footer>Prepared 7 October 2026 from the 543-question DEV comparison and a temporal miss diagnostic over its frozen artifacts.</footer>
+</main>
+
+<script>
+(function () {
+  var cats = [
+    { name: "Single-hop", n: 287, h: 225, m: 212 },
+    { name: "Multi-hop", n: 106, h: 50, m: 57 },
+    { name: "Temporal", n: 122, h: 76, m: 94 },
+    { name: "Open-domain", n: 28, h: 9, m: 6 }
+  ];
+  var overall = { name: "Overall", n: 543, h: 360, m: 369, total: true };
+  var causes = [
+    { name: "Relative time: abstained", n: 16, m: 10 },
+    { name: "Relative time: copied unresolved", n: 5, m: 5 },
+    { name: "Relative time: session date, no offset", n: 5, m: 4 },
+    { name: "Not retrieved: date-scoped question", n: 6, m: 2 },
+    { name: "Not retrieved: other", n: 5, m: 4 },
+    { name: "Arithmetic across turns", n: 4, m: 0 },
+    { name: "Other answer errors", n: 3, m: 2 },
+    { name: "Gold label problem", n: 2, m: 0 }
+  ];
+  var NS = "http://www.w3.org/2000/svg";
+
+  function pct(k, n) { return (100 * k / n).toFixed(1) + "%"; }
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function text(parent, x, y, s, attrs) {
+    var a = { x: x, y: y };
+    for (var k in attrs) a[k] = attrs[k];
+    var t = el("text", a, parent);
+    t.textContent = s;
+    return t;
+  }
+  // Bar path with a 4px rounded far end and a square base.
+  function barPath(x0, x1, y, h, roundEnd) {
+    var r = roundEnd ? Math.min(4, Math.abs(x1 - x0) / 2) : 0;
+    if (x1 >= x0) {
+      return "M" + x0 + "," + y + "H" + (x1 - r) + (r ? "a" + r + "," + r + " 0 0 1 " + r + "," + r : "") +
+        "V" + (y + h - r) + (r ? "a" + r + "," + r + " 0 0 1 " + (-r) + "," + r : "") + "H" + x0 + "Z";
+    }
+    return "M" + x0 + "," + y + "H" + (x1 + r) + (r ? "a" + r + "," + r + " 0 0 0 " + (-r) + "," + r : "") +
+      "V" + (y + h - r) + (r ? "a" + r + "," + r + " 0 0 0 " + r + "," + r : "") + "H" + x0 + "Z";
+  }
+  function attachTip(fig, target, html) {
+    var tip = fig.querySelector(".tip");
+    function show(x, y) {
+      tip.innerHTML = html;
+      tip.hidden = false;
+      var fw = fig.clientWidth, tw = tip.offsetWidth;
+      tip.style.left = Math.min(Math.max(8, x + 14), fw - tw - 8) + "px";
+      tip.style.top = (y + 16) + "px";
+    }
+    target.addEventListener("pointermove", function (e) {
+      var r = fig.getBoundingClientRect();
+      show(e.clientX - r.left, e.clientY - r.top);
+    });
+    target.addEventListener("pointerleave", function () { tip.hidden = true; });
+    target.addEventListener("focus", function () {
+      var r = fig.getBoundingClientRect(), b = target.getBoundingClientRect();
+      show(b.left - r.left + Math.min(b.width / 2, 160), b.top - r.top + b.height / 2);
+    });
+    target.addEventListener("blur", function () { tip.hidden = true; });
+  }
+
+  function drawNet(host, fig) {
+    var W = host.clientWidth;
+    host.innerHTML = "";
+    var rows = [cats[0], cats[3], cats[1], cats[2], overall];
+    var narrow = W < 480;
+    var labelW = narrow ? 92 : 118, padL = labelW + 38, padR = 40;
+    var rowH = 40, top = 6, gapTotal = 14;
+    var plotBottom = top + rows.length * rowH + gapTotal;
+    var H = plotBottom + 42;
+    var svg = el("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "group",
+      "aria-label": "Net correct answers by category. Single-hop HeurChain +13, open-domain HeurChain +3, multi-hop Mem0 +7, temporal Mem0 +18, overall Mem0 +9." }, host);
+    var max = 20, x0 = padL, x1 = W - padR;
+    function sx(v) { return x0 + (v + max) / (2 * max) * (x1 - x0); }
+
+    [-20, -10, 0, 10, 20].forEach(function (v) {
+      el("line", { x1: sx(v), x2: sx(v), y1: top, y2: plotBottom, "class": v === 0 ? "axis" : "grid" }, svg);
+      text(svg, sx(v), plotBottom + 17, String(Math.abs(v)), { "class": "tick", "text-anchor": "middle" });
+    });
+    text(svg, sx(-20), plotBottom + 35, "← Mem0 ahead", { "class": "tick-cap", "text-anchor": "start" });
+    text(svg, sx(20), plotBottom + 35, "HeurChain ahead →", { "class": "tick-cap", "text-anchor": "end" });
+
+    rows.forEach(function (r, i) {
+      var d = r.h - r.m;
+      var yMid = top + i * rowH + rowH / 2 + (r.total ? gapTotal : 0);
+      if (r.total) {
+        var yl = yMid - rowH / 2 - gapTotal / 2;
+        el("line", { x1: 0, x2: W, y1: yl, y2: yl, "class": "axis" }, svg);
+      }
+      text(svg, 0, yMid + 5, r.name, { "class": r.total ? "row-label strong" : "row-label" });
+      var bh = 22, pos = d >= 0, e = sx(d);
+      el("path", { d: barPath(sx(0), e, yMid - bh / 2, bh, true), "class": pos ? "mark-h" : "mark-m" }, svg);
+      text(svg, pos ? e + 6 : e - 6, yMid + 5, (d > 0 ? "+" : "−") + Math.abs(d),
+        { "class": "val", "text-anchor": pos ? "start" : "end" });
+      var hit = el("rect", { x: 0, y: yMid - rowH / 2, width: W, height: rowH, "class": "hit", tabindex: "0", role: "img",
+        "aria-label": r.name + ": HeurChain " + r.h + " of " + r.n + ", Mem0 " + r.m + " of " + r.n + ", " + (d > 0 ? "HeurChain" : "Mem0") + " ahead by " + Math.abs(d) }, svg);
+      svg.insertBefore(hit, svg.firstChild);
+      attachTip(fig, hit, "<strong>" + r.name + "</strong> · " + r.n + " questions<br>HeurChain " + r.h + " correct (" + pct(r.h, r.n) +
+        ")<br>Mem0 " + r.m + " correct (" + pct(r.m, r.n) + ")<br>" + (d > 0 ? "HeurChain" : "Mem0") + " ahead by " + Math.abs(d));
+    });
+  }
+
+  function drawCauses(host, fig) {
+    var W = host.clientWidth;
+    host.innerHTML = "";
+    var rowH = 48, top = 4, padR = 34, x0 = 0, x1 = W - padR, max = 16, bh = 16, gap = 2;
+    var plotBottom = top + causes.length * rowH;
+    var H = plotBottom + 24;
+    var svg = el("svg", { width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "group",
+      "aria-label": "HeurChain's 46 temporal misses by cause, split by whether Mem0 answered correctly." }, host);
+    function sx(v) { return x0 + v / max * (x1 - x0); }
+
+    [0, 4, 8, 12, 16].forEach(function (v) {
+      el("line", { x1: sx(v), x2: sx(v), y1: top + 18, y2: plotBottom, "class": v === 0 ? "axis" : "grid" }, svg);
+      text(svg, sx(v), plotBottom + 17, String(v), { "class": "tick", "text-anchor": v === 0 ? "start" : v === 16 ? "end" : "middle" });
+    });
+
+    causes.forEach(function (c, i) {
+      var yTop = top + i * rowH;
+      var hit = el("rect", { x: 0, y: yTop, width: W, height: rowH, "class": "hit", tabindex: "0", role: "img",
+        "aria-label": c.name + ": " + c.n + " HeurChain misses; Mem0 answered " + c.m + " correctly and missed " + (c.n - c.m) }, svg);
+      text(svg, 0, yTop + 14, c.name, { "class": "row-label" });
+      var y = yTop + 22, mEnd = sx(c.m), nEnd = sx(c.n), rest = c.n - c.m;
+      if (c.m > 0) {
+        el("path", { d: barPath(sx(0), rest > 0 ? mEnd - gap / 2 : mEnd, y, bh, rest === 0), "class": "mark-m" }, svg);
+        if (mEnd - sx(0) >= 22) text(svg, sx(0) + 6, y + 12, String(c.m), { "class": "inval" });
+      }
+      if (rest > 0) {
+        el("path", { d: barPath(c.m > 0 ? mEnd + gap / 2 : sx(0), nEnd, y, bh, true), "class": "mark-n" }, svg);
+      }
+      text(svg, nEnd + 6, y + 12, String(c.n), { "class": "val", "text-anchor": "start" });
+      attachTip(fig, hit, "<strong>" + c.name + "</strong><br>" + c.n + " HeurChain misses<br>Mem0 answered " + c.m +
+        " correctly, missed " + rest);
+    });
+  }
+
+  function mount(id, draw) {
+    var fig = document.getElementById(id);
+    if (!fig) return;
+    var host = fig.querySelector(".plot");
+    var last = 0;
+    function render() {
+      var w = host.clientWidth;
+      if (!w || w === last) return;
+      last = w;
+      try { draw(host, fig); } catch (err) { host.textContent = "Chart unavailable. See the tables on this page."; }
+    }
+    render();
+    if (window.ResizeObserver) new ResizeObserver(render).observe(host);
+    else window.addEventListener("resize", render);
+  }
+
+  function start() {
+    mount("chart-net", drawNet);
+    mount("chart-causes", drawCauses);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
+  else start();
+})();
+</script>

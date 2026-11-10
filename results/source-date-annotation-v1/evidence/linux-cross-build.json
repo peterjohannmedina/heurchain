@@ -1,0 +1,18 @@
+{
+  "name": "linux-cross-build",
+  "argv": [
+    "C:\\Program Files\\Go\\bin\\go.exe",
+    "build",
+    "-p=1",
+    "-trimpath",
+    "-buildvcs=true",
+    "-o",
+    "[machine-local value omitted; original receipt hash retained]",
+    "."
+  ],
+  "cwd": "[machine-local value omitted; original receipt hash retained]",
+  "exit_code": 0,
+  "seconds": 2.971,
+  "log": "[machine-local value omitted; original receipt hash retained]",
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

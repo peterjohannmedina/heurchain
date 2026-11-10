@@ -1,0 +1,96 @@
+{
+  "artifacts": [
+    {
+      "argv": [
+        "C:\\Program Files\\Go\\bin\\go.exe",
+        "build",
+        "-p=1",
+        "-trimpath",
+        "-buildvcs=true",
+        "-o",
+        "[machine-local value omitted; original receipt hash retained]",
+        "./cmd/date-annotate"
+      ],
+      "bytes": 4910592,
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches_staged_bytes": true,
+      "metadata_log_sha256": "b174ef05811d88c7c09435c43d4bbcaf599d20b9567d7e660eed2b216a87d3f4",
+      "name": "date-annotate.exe",
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "seconds": 1.2403881999198347,
+      "sha256": "e4c974baee080f5218950fb0b08b377463280479329e564053ef09afa4907db5",
+      "vcs_modified": false
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\Go\\bin\\go.exe",
+        "build",
+        "-p=1",
+        "-trimpath",
+        "-buildvcs=true",
+        "-o",
+        "[machine-local value omitted; original receipt hash retained]",
+        "."
+      ],
+      "bytes": 20126720,
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches_staged_bytes": true,
+      "metadata_log_sha256": "73e878f284d793bef2028631df0e27ca1e2fb609248f8418c8be6a1b7e245b46",
+      "name": "heurchain-broker.exe",
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "seconds": 3.294654499972239,
+      "sha256": "a2ba6576ca140ce1f8b20527cc683eace6a11874a73680edcb2e72aebeefdd79",
+      "vcs_modified": false
+    },
+    {
+      "argv": [
+        "C:\\Program Files\\Go\\bin\\go.exe",
+        "build",
+        "-p=1",
+        "-trimpath",
+        "-buildvcs=true",
+        "-o",
+        "[machine-local value omitted; original receipt hash retained]",
+        "."
+      ],
+      "bytes": 19891868,
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches_staged_bytes": true,
+      "metadata_log_sha256": "dc51d8618fc68583df5a00dd47d5ebcf1b5e04ed50668f13b69fd2b17d51d356",
+      "name": "heurchain-broker-linux",
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "seconds": 3.2159392000176013,
+      "sha256": "8e96954ff6b8dcea6063c0558ffcd3d14f0b356587557a405dab96fe270f5a31",
+      "vcs_modified": false
+    }
+  ],
+  "broker_execution": 0,
+  "embedding_calls": 0,
+  "independent": true,
+  "judge_calls": 0,
+  "linux_runtime_qualification": false,
+  "listeners": 0,
+  "model_calls": 0,
+  "network_calls": 0,
+  "qualified_cache_receipt_sha256": "ff7afb2960785698e1c98565595fb67f747d5398a55c6e8302ab33dd10d720ac",
+  "rebuild_source_sha256": "23fc29824eba49e1524e293e6df264f53ca5e63e14106b3d932f56ba7a4293f5",
+  "recorded_utc": "2026-10-07T19:19:40.778887+00:00",
+  "resource_policy": {
+    "GOENV": "off",
+    "GOMAXPROCS": 1,
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "GOTOOLCHAIN": "local",
+    "cpu_affinity": 1,
+    "priority": "IDLE"
+  },
+  "schema": "independent-final-date-prototype-rebuild/v1",
+  "source_build_pins_sha256": "ec20710d60190287567e45b2f35085db459d97c578f47f8de05d76be7445a92a",
+  "source_changes": 0,
+  "source_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+  "source_tree": "2596af69d69abcc5edf1b012819823db448d30dc",
+  "status": "PASS_ALL_THREE_BYTE_IDENTICAL"
+}

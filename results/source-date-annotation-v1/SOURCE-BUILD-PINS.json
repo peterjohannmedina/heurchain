@@ -1,0 +1,175 @@
+{
+  "schema": "heurchain-source-date-candidate-pins/v1",
+  "recorded_utc": "2026-10-07T19:16:47.968805+00:00",
+  "worktree": "[machine-local value omitted; original receipt hash retained]",
+  "branch": "candidate/source-date-annotations-v1",
+  "commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+  "tree": "2596af69d69abcc5edf1b012819823db448d30dc",
+  "reviewed_source_base": "7636913af7c15406ffd03db97ffac34a9d008b36",
+  "frozen_baseline_commit": "216e39eb8d91b69a75452037efd96bd597b5ffb6",
+  "worktree_clean": true,
+  "tracked_files": 360,
+  "changes_from_reviewed_base": [
+    "A\tbroker/cmd/date-annotate/main.go",
+    "A\tbroker/internal/eventdates/annotate.go",
+    "A\tbroker/internal/eventdates/annotate_test.go",
+    "A\tbroker/internal/eventdates/fingerprint.go",
+    "M\tbroker/openapi.go",
+    "M\tbroker/recall.go",
+    "A\tbroker/recall_date_annotations.go",
+    "A\tbroker/recall_date_annotations_test.go",
+    "M\tbroker/recall_options.go",
+    "M\tbroker/rrf.go",
+    "A\tdocs/research/source-date-annotation-prototype.md",
+    "A\ttools/event-date-prototype/audit_dev.py",
+    "A\ttools/event-date-prototype/packing.py",
+    "A\ttools/event-date-prototype/run_checks.py",
+    "A\ttools/event-date-prototype/test_cli_contract.py",
+    "A\ttools/event-date-prototype/test_packing.py"
+  ],
+  "source_manifest": "evidence/CANDIDATE-SOURCE-FILES.json",
+  "source_manifest_sha256": "fd4ae732c8c56fff5d4e5136ca3512203d2dc7c5bfa26c5bf553bd497a57302c",
+  "go_mod_sha256": "304d6610a9781687a23d7643e74c610e42ebcc04722198ad609acde34faa7abd",
+  "go_sum_sha256": "d03050f6c2a3ddf5f2790d1ae8c4a6d1cc488cab41ce198f14e465caaf27699f",
+  "compiler": "go version go1.27.0 windows/amd64",
+  "compiler_binary_sha256": "7d828191ba32519a9c9361789ab647486236ed45c660889196c7770a8ff1985c",
+  "no_dependency_downloads": true,
+  "checks": [
+    {
+      "name": "calendar-test",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "e61778d17e9ff3e69591b53032bdb554814d9bfc94a22deb71609ed4099891fe",
+      "exit_code": 0,
+      "log_sha256": "d3d778eadf4db20bbd2a361c0738eca43e0ace45ec3921ddb77525676dbdf848"
+    },
+    {
+      "name": "packing-test",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "20b82775ae221f41ab143e005e5eb77b6b86a9c3a0e77c97f92402715ed3a36d",
+      "exit_code": 0,
+      "log_sha256": "7a14a6b7a78ab0c73959601709b293818678a1cfb496728a9dcd17340f008027"
+    },
+    {
+      "name": "module-verify",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "0eaa9cdb0692080bd1b194ac94d20ad618fbf1b6ccda027cf6267a0196f7e55c",
+      "exit_code": 0,
+      "log_sha256": "b4537ed75f533f993f371954de47e42a793b8e5b0587577de7e27fb3e50696bd"
+    },
+    {
+      "name": "full-go-test",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "11c5e56b43619165965cdb085f17dd206d5e71c06f1f6bbaa553a26419d82ce6",
+      "exit_code": 0,
+      "log_sha256": "00e3d0e26b17a21e60cdcec0fdf17e818c3c268f079bcf71a8f5840fc49e60af"
+    },
+    {
+      "name": "go-vet",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "e6bedd3a68a6121b709cace6b6588daa0e4873b1e8b5f5d588d1ea1ce5644f0b",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "annotator-build",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "c2cbacd2308f46fc9ea028164606bbafba2f7dfbfb76ffc0db9739705d36654a",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "cli-contract-test",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "01e533065d6ce94a935d84c9d464b09bdbebd2fd151d568ff1b38172509df21e",
+      "exit_code": 0,
+      "log_sha256": "a5b68570723fa53cd24095d46ffc9ec1e32db158f37a24ef0e2cb8ed642244a3"
+    },
+    {
+      "name": "broker-build",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "ad9e484a55fd884c224c57a89dbfec4ade9f2362bc77c7776256412660f3028f",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "linux-cross-build",
+      "receipt": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "27c7d208af04126f530207b2145b7a4b16aa3704ca0cea1cc92c3e0e77fbd2e8",
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "go_test_pass_events": 494,
+  "python_packing_tests": 7,
+  "compiled_cli_contract_tests": 3,
+  "real_backend_skips": [
+    "TestDenseIntentRealRedisLuaFaultAndQdrantRecovery/current=0",
+    "TestDenseIntentRealRedisLuaFaultAndQdrantRecovery/current=1",
+    "TestDenseIntentRealBackendAcceptedWriteAndLeaseRestart"
+  ],
+  "race_test": {
+    "status": "BLOCKED_NO_LOCAL_C_COMPILER",
+    "gcc_on_path": null,
+    "attempted": false
+  },
+  "linux_runtime_qualification": false,
+  "completed_DEV_comparison_compiler": "go1.27.1 linux/amd64",
+  "resource_policy": {
+    "priority": "IDLE",
+    "cpu_affinity": 1,
+    "GOMAXPROCS": 1,
+    "test_parallelism": 1,
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "GOTOOLCHAIN": "local"
+  },
+  "artifacts": [
+    {
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "e4c974baee080f5218950fb0b08b377463280479329e564053ef09afa4907db5",
+      "bytes": 4910592,
+      "platform": "windows/amd64",
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "vcs_modified": false,
+      "metadata_log": "[machine-local value omitted; original receipt hash retained]",
+      "metadata_log_sha256": "04c1f75c6c741e0e0253af2d748ae4a23a7375917ae2a7f5df668df5497028bd",
+      "production_release": false,
+      "broker_runtime_deployed": false
+    },
+    {
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "a2ba6576ca140ce1f8b20527cc683eace6a11874a73680edcb2e72aebeefdd79",
+      "bytes": 20126720,
+      "platform": "windows/amd64",
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "vcs_modified": false,
+      "metadata_log": "[machine-local value omitted; original receipt hash retained]",
+      "metadata_log_sha256": "7d254261eaae18fafcd63ae6ebf1ef7bc6fa94c59b92f4a40749b390a616b45f",
+      "production_release": false,
+      "broker_runtime_deployed": false
+    },
+    {
+      "path": "[machine-local value omitted; original receipt hash retained]",
+      "sha256": "8e96954ff6b8dcea6063c0558ffcd3d14f0b356587557a405dab96fe270f5a31",
+      "bytes": 19891868,
+      "platform": "linux/amd64",
+      "embedded_commit": "61e81f7cb077c1e9a9425b986c2263b11f44d57f",
+      "vcs_modified": false,
+      "metadata_log": "[machine-local value omitted; original receipt hash retained]",
+      "metadata_log_sha256": "df6f6d0b4819c0090f6c39a468c133f819df53715d44ac5f90b0f2724ccf5ebb",
+      "production_release": false,
+      "broker_runtime_deployed": false
+    }
+  ],
+  "original_preservation_receipt": "evidence/ORIGINAL-PRESERVATION.json",
+  "original_preservation_sha256": "c5672f28ead284d9e7080fd666918e10fc4463afe3ce296d03db3c682344d9fa",
+  "offline_audit": "evidence/DEV-OFFLINE-AUDIT.json",
+  "offline_audit_sha256": "9b60dc9d71811d767b8436b373b2cd149bfa15f8cc304834bfa0741be1f28cbc",
+  "new_model_calls": 0,
+  "new_judge_calls": 0,
+  "new_embedding_calls": 0,
+  "heldout_reads": 0,
+  "new_broker_deployments": 0,
+  "production_write": false,
+  "push_performed": false
+}

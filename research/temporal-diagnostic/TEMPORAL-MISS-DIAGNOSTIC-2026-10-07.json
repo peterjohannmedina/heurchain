@@ -1,0 +1,884 @@
+{
+  "generated_utc": "2026-10-07T14:09:51.837Z",
+  "temporal_split_by_relative_evidence": {
+    "relative": {
+      "n": 95,
+      "h": 59,
+      "m": 73
+    },
+    "other": {
+      "n": 27,
+      "h": 17,
+      "m": 21
+    }
+  },
+  "temporal_units_stating_explicit_date": {
+    "heurchain_turn_text_excluding_session_header": [
+      0,
+      2440
+    ],
+    "mem0_memory_text": [
+      846,
+      1149
+    ],
+    "mem0_requests_loaded": 701
+  },
+  "scope": "DEV only (conv-26, conv-30, conv-41, conv-50); frozen artifacts; no model calls; no holdout reads",
+  "integrity": {
+    "hVerdicts": 543,
+    "mVerdicts": 543,
+    "hAnswers": 701,
+    "mAnswers": 701,
+    "retrievals": 701,
+    "sources": 2019,
+    "packedNotInRetrieval": 0,
+    "packedOrderMismatch": 0
+  },
+  "paired_by_category": {
+    "temporal": {
+      "n": 122,
+      "both": 67,
+      "h_only": 9,
+      "m_only": 27,
+      "neither": 19
+    },
+    "open-domain": {
+      "n": 28,
+      "both": 6,
+      "h_only": 3,
+      "m_only": 0,
+      "neither": 19
+    },
+    "multi-hop": {
+      "n": 106,
+      "both": 37,
+      "h_only": 13,
+      "m_only": 20,
+      "neither": 36
+    },
+    "single-hop": {
+      "n": 287,
+      "both": 183,
+      "h_only": 42,
+      "m_only": 29,
+      "neither": 33
+    }
+  },
+  "evidence_coverage_by_category": {
+    "temporal": {
+      "n": 122,
+      "all": 106,
+      "partial": 2,
+      "none": 13,
+      "no-labels": 1,
+      "cutByCap": 0,
+      "h_correct_by_coverage": {
+        "all": [
+          73,
+          106
+        ],
+        "none": [
+          2,
+          13
+        ],
+        "partial": [
+          0,
+          2
+        ],
+        "no-labels": [
+          1,
+          1
+        ]
+      }
+    },
+    "open-domain": {
+      "n": 28,
+      "all": 12,
+      "partial": 3,
+      "none": 9,
+      "no-labels": 4,
+      "cutByCap": 0,
+      "h_correct_by_coverage": {
+        "all": [
+          4,
+          12
+        ],
+        "no-labels": [
+          1,
+          4
+        ],
+        "none": [
+          2,
+          9
+        ],
+        "partial": [
+          2,
+          3
+        ]
+      }
+    },
+    "multi-hop": {
+      "n": 106,
+      "all": 30,
+      "partial": 54,
+      "none": 21,
+      "no-labels": 1,
+      "cutByCap": 0,
+      "h_correct_by_coverage": {
+        "none": [
+          4,
+          21
+        ],
+        "partial": [
+          25,
+          54
+        ],
+        "no-labels": [
+          1,
+          1
+        ],
+        "all": [
+          20,
+          30
+        ]
+      }
+    },
+    "single-hop": {
+      "n": 287,
+      "all": 232,
+      "partial": 2,
+      "none": 53,
+      "no-labels": 0,
+      "cutByCap": 0,
+      "h_correct_by_coverage": {
+        "all": [
+          210,
+          232
+        ],
+        "none": [
+          14,
+          53
+        ],
+        "partial": [
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "temporal_by_conversation": {
+    "conv-26": {
+      "n": 37,
+      "h": 27,
+      "m": 31
+    },
+    "conv-30": {
+      "n": 26,
+      "h": 21,
+      "m": 21
+    },
+    "conv-41": {
+      "n": 27,
+      "h": 13,
+      "m": 23
+    },
+    "conv-50": {
+      "n": 32,
+      "h": 15,
+      "m": 19
+    }
+  },
+  "temporal_answer_style": {
+    "heurchain": {
+      "n": 122,
+      "unknown": 30,
+      "relative_only": 7,
+      "has_absolute": 80
+    },
+    "mem0": {
+      "n": 122,
+      "unknown": 18,
+      "relative_only": 0,
+      "has_absolute": 96
+    }
+  },
+  "heurchain_temporal_misses": {
+    "total": 46,
+    "classes": {
+      "relative time left unresolved": {
+        "total": 4,
+        "mem0_correct": 4
+      },
+      "session date given, gold is offset from it": {
+        "total": 5,
+        "mem0_correct": 2
+      },
+      "abstained with evidence in context": {
+        "total": 19,
+        "mem0_correct": 11
+      },
+      "evidence not retrieved": {
+        "total": 11,
+        "mem0_correct": 6
+      },
+      "session date given instead of event date": {
+        "total": 2,
+        "mem0_correct": 2
+      },
+      "wrong date or period with evidence in context": {
+        "total": 3,
+        "mem0_correct": 2
+      },
+      "abstained, partial evidence": {
+        "total": 2,
+        "mem0_correct": 0
+      }
+    }
+  },
+  "heurchain_temporal_miss_rows": [
+    {
+      "id": "conv-26-qa-001",
+      "cls": "relative time left unresolved",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D1:12",
+          "rank": 16,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-005",
+      "cls": "session date given, gold is offset from it",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D2:1",
+          "rank": 2,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-010",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D3:13",
+          "rank": 6,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-026",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D7:8",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-044",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D11:1",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-049",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D12:15",
+          "rank": 7,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-058",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D14:4",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-068",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D16:8",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-074",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D18:1",
+          "rank": 2,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-26-qa-080",
+      "cls": "relative time left unresolved",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D19:2",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-30-qa-000",
+      "cls": "session date given instead of event date",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D1:2",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-30-qa-020",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D12:1",
+          "rank": 2,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-30-qa-021",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D12:6",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-30-qa-030",
+      "cls": "wrong date or period with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D15:5",
+          "rank": 4,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-30-qa-033",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D16:6",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-010",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D7:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-020",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D11:3",
+          "rank": 6,
+          "packed": true
+        },
+        {
+          "dia": "D11:5",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-027",
+      "cls": "session date given, gold is offset from it",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D15:11",
+          "rank": 3,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-031",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D17:1",
+          "rank": 15,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-034",
+      "cls": "session date given, gold is offset from it",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D19:1",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-038",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D21:3",
+          "rank": 5,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-048",
+      "cls": "session date given, gold is offset from it",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D26:4",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-053",
+      "cls": "relative time left unresolved",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D28:11",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-054",
+      "cls": "session date given instead of event date",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D28:8",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-056",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D29:2",
+          "rank": 10,
+          "packed": true
+        },
+        {
+          "dia": "D29:4",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-059",
+      "cls": "relative time left unresolved",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D30:6",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-061",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D31:2",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-063",
+      "cls": "abstained, partial evidence",
+      "mem0_correct": 0,
+      "coverage": "partial",
+      "evidence": [
+        {
+          "dia": "D30:1",
+          "rank": 3,
+          "packed": true
+        },
+        {
+          "dia": "D31:2",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-41-qa-091",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D12:9",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-000",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D3:1",
+          "rank": 7,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-002",
+      "cls": "session date given, gold is offset from it",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D2:10",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-008",
+      "cls": "wrong date or period with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D4:1",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-010",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D6:3",
+          "rank": 2,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-012",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D6:11",
+          "rank": 8,
+          "packed": true
+        },
+        {
+          "dia": "D7:1",
+          "rank": 5,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-027",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 0,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D16:6",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-031",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 0,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D14:1",
+          "rank": null,
+          "packed": false
+        },
+        {
+          "dia": "D17:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-034",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D17:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-043",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D21:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-048",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 0,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D22:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-050",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D23:16",
+          "rank": 4,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-051",
+      "cls": "wrong date or period with evidence in context",
+      "mem0_correct": 1,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D24:5",
+          "rank": 15,
+          "packed": true
+        },
+        {
+          "dia": "D15:2",
+          "rank": 3,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-057",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 1,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D27:2",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-061",
+      "cls": "abstained, partial evidence",
+      "mem0_correct": 0,
+      "coverage": "partial",
+      "evidence": [
+        {
+          "dia": "D14:11",
+          "rank": null,
+          "packed": false
+        },
+        {
+          "dia": "D20:1",
+          "rank": 2,
+          "packed": true
+        },
+        {
+          "dia": "D21:4",
+          "rank": 1,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-062",
+      "cls": "abstained with evidence in context",
+      "mem0_correct": 0,
+      "coverage": "all",
+      "evidence": [
+        {
+          "dia": "D14:1",
+          "rank": 1,
+          "packed": true
+        },
+        {
+          "dia": "D17:1",
+          "rank": 4,
+          "packed": true
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-067",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 0,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D28:1",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    },
+    {
+      "id": "conv-50-qa-068",
+      "cls": "evidence not retrieved",
+      "mem0_correct": 0,
+      "coverage": "none",
+      "evidence": [
+        {
+          "dia": "D28:20",
+          "rank": null,
+          "packed": false
+        }
+      ]
+    }
+  ],
+  "publication_note": "Question, gold, answer, session timestamps and dialogue excerpts omitted; aggregate metrics, classifications, IDs/ranks and packing flags retained."
+}

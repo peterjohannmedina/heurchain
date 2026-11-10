@@ -1,0 +1,13 @@
+{
+  "name": "module-verify",
+  "argv": [
+    "C:\\Program Files\\Go\\bin\\go.exe",
+    "mod",
+    "verify"
+  ],
+  "cwd": "[machine-local value omitted; original receipt hash retained]",
+  "exit_code": 0,
+  "seconds": 5.511,
+  "log": "[machine-local value omitted; original receipt hash retained]",
+  "log_sha256": "b4537ed75f533f993f371954de47e42a793b8e5b0587577de7e27fb3e50696bd"
+}

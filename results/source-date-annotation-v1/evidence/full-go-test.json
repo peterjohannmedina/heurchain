@@ -1,0 +1,23 @@
+{
+  "name": "full-go-test",
+  "argv": [
+    "C:\\Program Files\\Go\\bin\\go.exe",
+    "test",
+    "-count=1",
+    "-p=1",
+    "-parallel=1",
+    "-json",
+    "./..."
+  ],
+  "cwd": "[machine-local value omitted; original receipt hash retained]",
+  "exit_code": 0,
+  "seconds": 20.953,
+  "log": "[machine-local value omitted; original receipt hash retained]",
+  "log_sha256": "00e3d0e26b17a21e60cdcec0fdf17e818c3c268f079bcf71a8f5840fc49e60af",
+  "test_pass_events": 494,
+  "test_skip_events": [
+    "TestDenseIntentRealRedisLuaFaultAndQdrantRecovery/current=0",
+    "TestDenseIntentRealRedisLuaFaultAndQdrantRecovery/current=1",
+    "TestDenseIntentRealBackendAcceptedWriteAndLeaseRestart"
+  ]
+}

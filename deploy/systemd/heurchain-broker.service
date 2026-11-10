@@ -1,0 +1,28 @@
+# Native (non-container) service. Assumes:
+#   binary  /usr/local/bin/heurchain-broker   (cd broker && CGO_ENABLED=0 go build -trimpath -o heurchain-broker .)
+#   config  /etc/heurchain/broker.yaml         (start from deploy/broker.yaml; use 127.0.0.1 addresses)
+#   env     /etc/heurchain/broker.env          (ADMIN_USER, ADMIN_PASS, QDRANT_URL, ...; mode 0600)
+#   data    /var/lib/heurchain                 (owned by the heurchain user)
+# Redis, Qdrant and an embedder must already be running locally.
+[Unit]
+Description=HeurChain memory broker
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=heurchain
+Group=heurchain
+EnvironmentFile=/etc/heurchain/broker.env
+ExecStart=/usr/local/bin/heurchain-broker -config /etc/heurchain/broker.yaml
+Restart=on-failure
+RestartSec=5
+StateDirectory=heurchain
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/heurchain
+
+[Install]
+WantedBy=multi-user.target

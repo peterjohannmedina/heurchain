@@ -1,0 +1,482 @@
+{
+  "schema": "heurchain-expansion-eval/v1",
+  "generated_utc": "2026-10-07T22:02:58Z",
+  "corpus_sha256": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+  "conversations": [
+    "conv-26",
+    "conv-30",
+    "conv-41",
+    "conv-50"
+  ],
+  "turns_stored": null,
+  "questions": 543,
+  "retrieval": {
+    "mode": "lexical",
+    "limit": 25,
+    "expansion_max_bytes": 16384,
+    "scope": "tags=[sample_id]"
+  },
+  "ranked_prefix_mismatches": {},
+  "over_budget": {},
+  "arms": {
+    "control": {
+      "by_category": {
+        "multi-hop": {
+          "questions": 106,
+          "evidence_turns": 270,
+          "evidence_found": 94,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 0,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "none": 44,
+            "partial": 45,
+            "all": 17
+          },
+          "bytes_p50": 3751,
+          "bytes_p90": 4742,
+          "bytes_max": 5555
+        },
+        "temporal": {
+          "questions": 122,
+          "evidence_turns": 131,
+          "evidence_found": 101,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 0,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "all": 93,
+            "none": 25,
+            "partial": 4
+          },
+          "bytes_p50": 3653,
+          "bytes_p90": 4739,
+          "bytes_max": 5382
+        },
+        "open-domain": {
+          "questions": 28,
+          "evidence_turns": 45,
+          "evidence_found": 12,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 0,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "none": 15,
+            "all": 7,
+            "no-labels": 4,
+            "partial": 2
+          },
+          "bytes_p50": 4123,
+          "bytes_p90": 4742,
+          "bytes_max": 5263
+        },
+        "single-hop": {
+          "questions": 287,
+          "evidence_turns": 294,
+          "evidence_found": 202,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 0,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "all": 197,
+            "none": 88,
+            "partial": 2
+          },
+          "bytes_p50": 3789,
+          "bytes_p90": 4597,
+          "bytes_max": 5890
+        },
+        "all": {
+          "questions": 543,
+          "evidence_turns": 740,
+          "evidence_found": 409,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 0,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "all": 314,
+            "none": 172,
+            "partial": 53,
+            "no-labels": 4
+          },
+          "bytes_p50": 3751,
+          "bytes_p90": 4716,
+          "bytes_max": 5890
+        }
+      },
+      "retrieval_ms_p50": 27,
+      "retrieval_ms_p95": 37,
+      "expansion_ms_p50": {}
+    },
+    "session_head_temporal": {
+      "by_category": {
+        "multi-hop": {
+          "questions": 106,
+          "evidence_turns": 270,
+          "evidence_found": 99,
+          "evidence_recovered_by_expansion": 5,
+          "appended_turns": 308,
+          "appended_that_are_evidence": 5,
+          "coverage": {
+            "none": 41,
+            "partial": 47,
+            "all": 18
+          },
+          "bytes_p50": 3844,
+          "bytes_p90": 7109,
+          "bytes_max": 11652
+        },
+        "temporal": {
+          "questions": 122,
+          "evidence_turns": 131,
+          "evidence_found": 111,
+          "evidence_recovered_by_expansion": 10,
+          "appended_turns": 3170,
+          "appended_that_are_evidence": 10,
+          "coverage": {
+            "all": 103,
+            "none": 17,
+            "partial": 2
+          },
+          "bytes_p50": 8783,
+          "bytes_p90": 10318,
+          "bytes_max": 11990
+        },
+        "open-domain": {
+          "questions": 28,
+          "evidence_turns": 45,
+          "evidence_found": 12,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 27,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "none": 15,
+            "all": 7,
+            "no-labels": 4,
+            "partial": 2
+          },
+          "bytes_p50": 4123,
+          "bytes_p90": 4896,
+          "bytes_max": 10596
+        },
+        "single-hop": {
+          "questions": 287,
+          "evidence_turns": 294,
+          "evidence_found": 207,
+          "evidence_recovered_by_expansion": 5,
+          "appended_turns": 2145,
+          "appended_that_are_evidence": 5,
+          "coverage": {
+            "all": 202,
+            "none": 83,
+            "partial": 2
+          },
+          "bytes_p50": 4199,
+          "bytes_p90": 9942,
+          "bytes_max": 12302
+        },
+        "all": {
+          "questions": 543,
+          "evidence_turns": 740,
+          "evidence_found": 429,
+          "evidence_recovered_by_expansion": 20,
+          "appended_turns": 5650,
+          "appended_that_are_evidence": 20,
+          "coverage": {
+            "all": 330,
+            "none": 156,
+            "partial": 53,
+            "no-labels": 4
+          },
+          "bytes_p50": 4467,
+          "bytes_p90": 9969,
+          "bytes_max": 12302
+        }
+      },
+      "retrieval_ms_p50": 28,
+      "retrieval_ms_p95": 37,
+      "expansion_ms_p50": {
+        "session_head": 0
+      }
+    },
+    "session_head_always": {
+      "by_category": {
+        "multi-hop": {
+          "questions": 106,
+          "evidence_turns": 270,
+          "evidence_found": 115,
+          "evidence_recovered_by_expansion": 21,
+          "appended_turns": 2755,
+          "appended_that_are_evidence": 21,
+          "coverage": {
+            "none": 31,
+            "partial": 56,
+            "all": 19
+          },
+          "bytes_p50": 9330,
+          "bytes_p90": 10965,
+          "bytes_max": 11971
+        },
+        "temporal": {
+          "questions": 122,
+          "evidence_turns": 131,
+          "evidence_found": 111,
+          "evidence_recovered_by_expansion": 10,
+          "appended_turns": 3170,
+          "appended_that_are_evidence": 10,
+          "coverage": {
+            "all": 103,
+            "none": 17,
+            "partial": 2
+          },
+          "bytes_p50": 8783,
+          "bytes_p90": 10318,
+          "bytes_max": 11990
+        },
+        "open-domain": {
+          "questions": 28,
+          "evidence_turns": 45,
+          "evidence_found": 15,
+          "evidence_recovered_by_expansion": 3,
+          "appended_turns": 763,
+          "appended_that_are_evidence": 3,
+          "coverage": {
+            "none": 12,
+            "all": 8,
+            "no-labels": 4,
+            "partial": 4
+          },
+          "bytes_p50": 9718,
+          "bytes_p90": 10898,
+          "bytes_max": 13132
+        },
+        "single-hop": {
+          "questions": 287,
+          "evidence_turns": 294,
+          "evidence_found": 209,
+          "evidence_recovered_by_expansion": 7,
+          "appended_turns": 7151,
+          "appended_that_are_evidence": 7,
+          "coverage": {
+            "all": 204,
+            "none": 82,
+            "partial": 1
+          },
+          "bytes_p50": 9080,
+          "bytes_p90": 10826,
+          "bytes_max": 12704
+        },
+        "all": {
+          "questions": 543,
+          "evidence_turns": 740,
+          "evidence_found": 450,
+          "evidence_recovered_by_expansion": 41,
+          "appended_turns": 13839,
+          "appended_that_are_evidence": 41,
+          "coverage": {
+            "all": 334,
+            "none": 142,
+            "partial": 63,
+            "no-labels": 4
+          },
+          "bytes_p50": 9079,
+          "bytes_p90": 10910,
+          "bytes_max": 13132
+        }
+      },
+      "retrieval_ms_p50": 29,
+      "retrieval_ms_p95": 38,
+      "expansion_ms_p50": {
+        "session_head": 1
+      }
+    },
+    "lexical_bridge": {
+      "by_category": {
+        "multi-hop": {
+          "questions": 106,
+          "evidence_turns": 270,
+          "evidence_found": 102,
+          "evidence_recovered_by_expansion": 8,
+          "appended_turns": 307,
+          "appended_that_are_evidence": 8,
+          "coverage": {
+            "none": 42,
+            "all": 19,
+            "partial": 45
+          },
+          "bytes_p50": 4294,
+          "bytes_p90": 5367,
+          "bytes_max": 6263
+        },
+        "temporal": {
+          "questions": 122,
+          "evidence_turns": 131,
+          "evidence_found": 103,
+          "evidence_recovered_by_expansion": 2,
+          "appended_turns": 349,
+          "appended_that_are_evidence": 2,
+          "coverage": {
+            "all": 95,
+            "none": 24,
+            "partial": 3
+          },
+          "bytes_p50": 4175,
+          "bytes_p90": 5263,
+          "bytes_max": 5917
+        },
+        "open-domain": {
+          "questions": 28,
+          "evidence_turns": 45,
+          "evidence_found": 12,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 83,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "none": 15,
+            "all": 7,
+            "no-labels": 4,
+            "partial": 2
+          },
+          "bytes_p50": 4690,
+          "bytes_p90": 5244,
+          "bytes_max": 6070
+        },
+        "single-hop": {
+          "questions": 287,
+          "evidence_turns": 294,
+          "evidence_found": 210,
+          "evidence_recovered_by_expansion": 8,
+          "appended_turns": 833,
+          "appended_that_are_evidence": 8,
+          "coverage": {
+            "all": 205,
+            "none": 81,
+            "partial": 1
+          },
+          "bytes_p50": 4278,
+          "bytes_p90": 5241,
+          "bytes_max": 6270
+        },
+        "all": {
+          "questions": 543,
+          "evidence_turns": 740,
+          "evidence_found": 427,
+          "evidence_recovered_by_expansion": 18,
+          "appended_turns": 1572,
+          "appended_that_are_evidence": 18,
+          "coverage": {
+            "all": 326,
+            "none": 162,
+            "partial": 51,
+            "no-labels": 4
+          },
+          "bytes_p50": 4254,
+          "bytes_p90": 5277,
+          "bytes_max": 6270
+        }
+      },
+      "retrieval_ms_p50": 37,
+      "retrieval_ms_p95": 49,
+      "expansion_ms_p50": {
+        "lexical_bridge": 9
+      }
+    },
+    "both": {
+      "by_category": {
+        "multi-hop": {
+          "questions": 106,
+          "evidence_turns": 270,
+          "evidence_found": 107,
+          "evidence_recovered_by_expansion": 13,
+          "appended_turns": 615,
+          "appended_that_are_evidence": 13,
+          "coverage": {
+            "none": 39,
+            "all": 20,
+            "partial": 47
+          },
+          "bytes_p50": 4377,
+          "bytes_p90": 7433,
+          "bytes_max": 12494
+        },
+        "temporal": {
+          "questions": 122,
+          "evidence_turns": 131,
+          "evidence_found": 111,
+          "evidence_recovered_by_expansion": 10,
+          "appended_turns": 3511,
+          "appended_that_are_evidence": 10,
+          "coverage": {
+            "all": 103,
+            "none": 17,
+            "partial": 2
+          },
+          "bytes_p50": 9231,
+          "bytes_p90": 10885,
+          "bytes_max": 12509
+        },
+        "open-domain": {
+          "questions": 28,
+          "evidence_turns": 45,
+          "evidence_found": 12,
+          "evidence_recovered_by_expansion": 0,
+          "appended_turns": 110,
+          "appended_that_are_evidence": 0,
+          "coverage": {
+            "none": 15,
+            "all": 7,
+            "no-labels": 4,
+            "partial": 2
+          },
+          "bytes_p50": 4690,
+          "bytes_p90": 5244,
+          "bytes_max": 11299
+        },
+        "single-hop": {
+          "questions": 287,
+          "evidence_turns": 294,
+          "evidence_found": 215,
+          "evidence_recovered_by_expansion": 13,
+          "appended_turns": 2974,
+          "appended_that_are_evidence": 13,
+          "coverage": {
+            "all": 210,
+            "none": 76,
+            "partial": 1
+          },
+          "bytes_p50": 4735,
+          "bytes_p90": 10479,
+          "bytes_max": 12685
+        },
+        "all": {
+          "questions": 543,
+          "evidence_turns": 740,
+          "evidence_found": 445,
+          "evidence_recovered_by_expansion": 36,
+          "appended_turns": 7210,
+          "appended_that_are_evidence": 36,
+          "coverage": {
+            "all": 340,
+            "none": 147,
+            "partial": 52,
+            "no-labels": 4
+          },
+          "bytes_p50": 4989,
+          "bytes_p90": 10483,
+          "bytes_max": 12685
+        }
+      },
+      "retrieval_ms_p50": 37,
+      "retrieval_ms_p95": 49,
+      "expansion_ms_p50": {
+        "session_head": 0,
+        "lexical_bridge": 9
+      }
+    }
+  },
+  "q1b_reachability": {
+    "control_missing_evidence_turns": 331,
+    "missing_session_openers": 61,
+    "missing_openers_with_anchor_in_session": 41
+  }
+}

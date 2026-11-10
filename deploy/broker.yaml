@@ -1,0 +1,45 @@
+# HeurChain broker 0.6.1 configuration for the Compose stack.
+#
+# The loader is STRICT: an unknown key is a startup error that names the key.
+# Environment-only settings: ADMIN_USER, ADMIN_PASS, QDRANT_URL, QDRANT_API_KEY,
+# OPENAI_API_KEY, HEURCHAIN_INSTANCE_ID (see deploy/.env.example).
+
+server:
+  bind: "0.0.0.0"          # inside the container; Compose publishes 127.0.0.1:8080
+  port: "8080"
+  timeout_seconds: 30
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+
+sqlite:
+  path: "/var/lib/heurchain/broker.db"
+
+vault:
+  path: "/var/lib/heurchain/vault"
+
+auth:
+  api_key_header: "X-HeurChain-API-Key"
+  tenant_header: "X-HeurChain-Tenant"
+
+# Embeddings. Default: the bundled Ollama with nomic-embed-text (768 dims).
+# For an OpenAI-compatible endpoint (OpenAI, TEI, vLLM, LM Studio) use:
+#   provider: openai
+#   openai_url: "http://your-embedder:8090/v1/embeddings"
+#   openai_model: "BAAI/bge-base-en-v1.5"
+# and set OPENAI_API_KEY in deploy/.env if the endpoint needs one.
+embed:
+  provider: ollama
+  ollama_url: "http://ollama:11434"
+  ollama_model: "nomic-embed-text"
+
+# Consolidation moves rarely used memories from the active set into the vault
+# (still exportable, no longer searched). promote_live: false is a dry run that
+# only logs what it would move; switch it on once the logs look right to you.
+consolidation:
+  promote_live: false
+  promotion_threshold: -20.0
+  decay_default: 0.1
+  interval_seconds: 3600

@@ -1,0 +1,69 @@
+{
+  "schema": "reviewed-supervisor-terminal-one-shot/v1",
+  "status": "PASS_COMPLETE701_ANSWERS_AND543_JUDGES",
+  "utc": "2026-10-07T05:35:27.603150+00:00",
+  "manifest_sha256": "98b6bbce94e579ae85a2329251e815b1462ade6ac63748703d5d67c33d91159b",
+  "source_sha256": "85659295f1da391cf5e80090d14fba9d13d7690131af63e7a8861704dd8e9252",
+  "observations": {
+    "answers": {
+      "status": "COMPLETE",
+      "completed_unique": 701,
+      "attempts_claimed": 702,
+      "retained_historical_failures": 1,
+      "retained_unknown_failed_usage": 1,
+      "validation_errors": 0,
+      "source_qualified_legacy_answer_scopes": 1,
+      "observed_utc": "2026-10-07T05:35:26.187831+00:00",
+      "observation_pin": {
+        "path": "[machine-local value omitted; original receipt hash retained]",
+        "sha256": "8722b42b4703d85bedf13d183b64c8ace5436d6fe231604f3f30992ee48c8559"
+      },
+      "spec_pin": {
+        "path": "[machine-local value omitted; original receipt hash retained]",
+        "sha256": "b30e9d7517c29c08bcadd38728a18b72c6960586895461d5717373fb1b036b86",
+        "bytes": 171549
+      },
+      "completed_usage": {
+        "cachedInputTokens": 5958912,
+        "inputTokens": 10806949,
+        "outputTokens": 17854,
+        "reasoningOutputTokens": 0
+      },
+      "one_shot_exit_code": 0
+    },
+    "judges": {
+      "status": "COMPLETE",
+      "completed_unique": 543,
+      "attempts_claimed": 543,
+      "retained_historical_failures": 0,
+      "retained_unknown_failed_usage": 0,
+      "validation_errors": 0,
+      "source_qualified_legacy_answer_scopes": 0,
+      "observed_utc": "2026-10-07T05:35:27.284790+00:00",
+      "observation_pin": {
+        "path": "[machine-local value omitted; original receipt hash retained]",
+        "sha256": "959a4dfd8122a480a728c666b6a6ba561b92591615eb4bd97ef7a7341d4d26a0"
+      },
+      "spec_pin": {
+        "path": "[machine-local value omitted; original receipt hash retained]",
+        "sha256": "16561eba617a0273793a9d75304bd038750ba07fc1e3d559cf2309165f1a22ad",
+        "bytes": 10350
+      },
+      "completed_usage": {
+        "cachedInputTokens": 5691136,
+        "inputTokens": 6121581,
+        "outputTokens": 8688,
+        "reasoningOutputTokens": 0
+      },
+      "one_shot_exit_code": 0
+    }
+  },
+  "model_native_embedding_network_calls": 0,
+  "target_mutations": 0,
+  "watcher_started": false,
+  "live_adapter_or_recovery_activated": false,
+  "historical_heartbeat_not_installed": true,
+  "failed_unknown_charge_retained": true,
+  "observer_state_root": "[machine-local value omitted; original receipt hash retained]",
+  "execution_script_sha256": "eeb9da6cfcf8e70dd09eb20718a2b68c14f9b91ce2eb9fd9ea884b5a1e0522e3"
+}

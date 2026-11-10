@@ -1,411 +1,78 @@
-# HeurChain
+# HeurChain (self-hosted)
 
-**One memory system. Every AI agent. Simultaneously.**
+**One memory system for every AI agent you run, on your own infrastructure.**
 
-HeurChain is a universal persistent memory layer for AI agents. Claude Code, Kimi, Hermes, OpenClaw, ChatGPT, and any HTTP or MCP client share the same tiered knowledge store — BM25-ranked search, session continuity, and automatic tier promotion — without any agent-specific configuration beyond a URL and an interface choice.
+HeurChain is a persistent memory broker for AI agents. Claude Code, Codex, Gemini, local
+models and any HTTP or MCP client share one store: they write facts, decisions and session
+summaries, and recall them later with hybrid search (BM25 + dense vectors, fused with RRF).
 
-[![npm version](https://img.shields.io/npm/v/heurchain)](https://www.npmjs.com/package/heurchain)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node ≥ 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen)](https://nodejs.org)
-[![Docker](https://img.shields.io/badge/docker-compose%20v2-blue)](https://docs.docker.com/compose/)
+This repository is the **self-hosted edition**: one Go binary plus Redis, an embedding model
+(Ollama or any OpenAI-compatible endpoint) and Qdrant for dense search. Individuals and organizations can run it on a laptop, a
+home server or a private VM, with no external accounts, billing or cloud services.
 
----
+> **Broker version: 0.6.1 (frozen).** This edition tracks the 0.6.1 broker. Changes here
+> are limited to fixes and documentation; new broker features are not added to this line.
 
-## Wiring your agent — where to look
+## What you get
 
-You don't need to manually configure every option. Point your agent at either of these resources and it can read its own wiring instructions and self-configure:
+- **REST API and MCP server** on one port: store, search, query, sessions, promotion,
+  vault export, agent recall. MCP over Streamable HTTP or legacy SSE.
+- **Hybrid retrieval**: BM25 inverted index in Redis, Qdrant dense search, RRF fusion,
+  optional knowledge-graph recall.
+- **Tenants and API keys**: isolated memory spaces per person, team or project, with per-key
+  rate limiting and an admin API to create and revoke keys.
+- **Decay and vault**: ACT-R style consolidation moves stale memories out of the active set
+  into a vault you can export (dry run by default).
+- **Session continuity**: start, end and resume sessions with summaries across agents.
 
-| Resource | Where | What it contains |
-|---|---|---|
-| **This README** | `https://www.npmjs.com/package/heurchain` | Complete setup, per-agent wiring snippets, API reference, session protocol |
-| **`AGENT_CONFIG.json`** | Bundled inside the npm package at install time | Machine-readable session lifecycle and tool catalog — designed for programmatic bootstrapping |
+## Quick start (Docker Compose)
 
-**Paste this prompt to any agent to get it started:**
-
-```
-Read the setup instructions at https://www.npmjs.com/package/heurchain,
-then wire yourself to the HeurChain instance at http://<your-host>.
-Follow the session protocol in the README (or in AGENT_CONFIG.json if you
-have the npm package): start a session on startup, use /agent/store and
-/search during work, end with a summary on shutdown.
-```
-
-The agent will find its protocol section (MCP SSE or HTTP REST), wire itself, and start using the session lifecycle. No manual configuration needed beyond the host URL.
-
----
-
-## Tested agents
-
-| Agent | Protocol | Status |
-|---|---|---|
-| **Claude Code** | MCP SSE via nginx | ✓ Connected |
-| **Kimi (Moonshot)** | MCP SSE via nginx | ✓ Connected — full read/write confirmed |
-| **Hermes** | HTTP REST direct to broker | ✓ Connected — all 12 endpoints verified |
-| **OpenClaw** | HTTP REST direct to broker | ✓ Connected — session lifecycle, BM25, persist flag |
-| **ChatGPT / GPT Actions** | HTTP REST via nginx | ✓ Compatible |
-| **Any HTTP client** | REST — no auth required | ✓ Compatible |
-
----
-
-## Architecture
-
-<img src="https://mermaid.ink/img/Zmxvd2NoYXJ0IFRECiAgICBzdWJncmFwaCBBR0VOVFMgWyJBbnkgQUkgQWdlbnQiXQogICAgICAgIEExWyJDbGF1ZGUgQ29kZSAvIEtpbWkKTUNQIFNTRSBjbGllbnQiXQogICAgICAgIEEyWyJPcGVuQ2xhdyAvIEhlcm1lcyAvIENoYXRHUFQKSFRUUCBjbGllbnQiXQogICAgZW5kCiAgICBzdWJncmFwaCBJRkFDRSBbIkludGVyZmFjZSBMYXllciJdCiAgICAgICAgTlsibmdpbnggOjgwClNTRSBnYXRld2F5Il0KICAgICAgICBNWyJoZXVyY2hhaW4tbWNwIDozMDEwCjI2IE1DUCB0b29scyJdCiAgICBlbmQKICAgIHN1YmdyYXBoIEJST0tFUiBbIkhldXJDaGFpbiBCcm9rZXIgOjMwMTIiXQogICAgICAgIFNNWyJTZXNzaW9uIE1hbmFnZXIKYWdlbnQgbmFtZXNwYWNpbmciXQogICAgICAgIFRSWyJUaWVyIFJvdXRlcgprZXkgcHJlZml4IHJvdXRpbmciXQogICAgICAgIEJNWyJCTTI1IEluZGV4CmluLW1lbW9yeSBzZWFyY2giXQogICAgZW5kCiAgICBzdWJncmFwaCBTVE9SRSBbIlN0b3JhZ2UgTGF5ZXIiXQogICAgICAgIFdbIk9yaSBWYXVsdApXb3JraW5nIFRpZXIKNy1kYXkgYXV0by1wcm9tb3RlIl0KICAgICAgICBSWygiUmVkaXMKTG9uZ3Rlcm0gVGllciIpXQogICAgICAgIE9bIk9ic2lkaWFuIFZhdWx0Ck1hcmtkb3duIG1pcnJvciJdCiAgICBlbmQKICAgIEExIC0tPnxNQ1AgU1NFfCBOCiAgICBBMiAtLT58SFRUUCBSRVNUfCBCUk9LRVIKICAgIE4gLS0+IE0KICAgIE0gLS0+IEJST0tFUgogICAgQlJPS0VSIC0tPiBTTSAtLT4gVFIKICAgIEJST0tFUiA8LS0+fHNjb3JlL2luZGV4fCBCTQogICAgVFIgLS0+fG1lbW9yeTogcHJlZml4fCBXCiAgICBUUiAtLT58ZG9jOiBrbm93bGVkZ2U6IHNlc3Npb246fCBSCiAgICBSIC0tPnxhdXRvLW1pcnJvcnwgTwogICAgQk0gPC0tPnxTQ0FOfCBSCiAgICBCTSA8LS0+fGdsb2IgbWR8IFcKICAgIFcgLS0+fGNvbnNvbGlkYXRpb24gNyBkYXlzfCBS" alt="HeurChain Architecture" width="100%" />
-
----
-
-## Data flow — Prompt to Memory to Recall
-
-<img src="https://mermaid.ink/img/Zmxvd2NoYXJ0IFRECiAgICBzdWJncmFwaCBTVE9SRSBbIlNUT1JFIOKAlCBQcm9tcHQgdG8gTWVtb3J5Il0KICAgICAgICBkaXJlY3Rpb24gVEIKICAgICAgICBBKFtBZ2VudF0pIC0tPiBTU1siUE9TVCAvc2Vzc2lvbi9zdGFydCJdCiAgICAgICAgU1MgLS0+IFNJRFsic2Vzc2lvbl9pZCByZXR1cm5lZCJdCiAgICAgICAgU0lEIC0tPiBBU1siUE9TVCAvYWdlbnQvc3RvcmUKa2V5IMK3IGNvbnRlbnQgwrcgcGVyc2lzdCJdCiAgICAgICAgQVMgLS0+IFRSeyJUaWVyIFJvdXRlcgpjbGFzc2lmeV90aWVyIn0KICAgICAgICBUUiAtLT58Im1lbW9yeTogcHJlZml4InwgV1JbIk9yaSBWYXVsdApXb3JraW5nIFRpZXIKNy1kYXkgYXV0by1wcm9tb3RlIl0KICAgICAgICBUUiAtLT58ImRvYzoga25vd2xlZGdlOgpwZXJzaXN0PXRydWUifCBSRFsoIlJlZGlzCkxvbmd0ZXJtIildCiAgICAgICAgUkQgLS0+IEJNWyJCTTI1IEluZGV4IHVwZGF0ZWQiXQogICAgICAgIEFTIC0tPiBTRVsiUE9TVCAvc2Vzc2lvbi9lbmQKc3VtbWFyeSJdCiAgICAgICAgU0UgLS0+IFJECiAgICBlbmQKCiAgICBzdWJncmFwaCBSRUNBTEwgWyJSRUNBTEwg4oCUIE1lbW9yeSB0byBSZXNwb25zZSJdCiAgICAgICAgZGlyZWN0aW9uIFRCCiAgICAgICAgUjFbIkdFVCAvYWdlbnQvbmFtZS9yZWNhbGwiXSAtLT4gUldbIk9yaSBWYXVsdAp3b3JraW5nIGVudHJpZXMiXQogICAgICAgIFIxIC0tPiBSTFsoIlJlZGlzCmxvbmd0ZXJtIGVudHJpZXMiKV0KICAgICAgICBSVyAmIFJMIC0tPiBSUihbIkZ1bGwgY29udGV4dApyZXR1cm5lZCB0byBhZ2VudCJdKQogICAgICAgIFIyWyJHRVQgL3NlYXJjaD9xPXF1ZXJ5Il0gLS0+IEJNU1siQk0yNQpTY29yZSBhbGwgZG9jcyJdCiAgICAgICAgQk1TIC0tPiBSUyhbIlJhbmtlZCByZXN1bHRzCnJldHVybmVkIHRvIGFnZW50Il0pCiAgICBlbmQ" alt="HeurChain Data Flow — Store and Recall" width="100%" />
-
----
-
-## Install — one line
-
-### Docker standalone (full stack — recommended)
-
-```bash
-# Clone and start
-git clone <repo-url> heurchain && cd heurchain/docker
-cp .env.example .env
-docker compose -f docker-compose.standalone.yml up -d --build
+```sh
+cp deploy/.env.example deploy/.env      # set ADMIN_USER and ADMIN_PASS
+docker compose -f deploy/compose.yaml up -d --build
+docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
+curl -s http://127.0.0.1:8080/health
 ```
 
-Four containers start in dependency order:
+Then create a tenant and API key, and connect your agents: see
+**[docs/install.md](docs/install.md)**. That guide also covers native systemd installs,
+TLS, backups and upgrading from the 1.x Node edition.
 
-```
-heurchain-redis  →  heurchain-broker  →  heurchain-mcp  →  heurchain-nginx
-```
+## Repository layout
 
-Verify:
-
-```bash
-curl http://localhost:3012/health   # broker — Redis + vault status
-curl http://localhost:3010/health   # MCP server
-curl http://localhost/              # nginx gateway (SSE entry point)
-```
-
-### npm (MCP server only — requires a running broker)
-
-```bash
-npm install heurchain
-```
-
-The npm package ships `server.js` and `AGENT_CONFIG.json`. The broker (FastAPI + Redis) must be running separately — use Docker standalone or the Ansible role for a managed host.
-
----
-
-## Agent wiring
-
-### Claude Code
-
-Add to your project's `.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "heurchain": {
-      "type": "sse",
-      "url": "http://<your-host>/sse"
-    }
-  }
-}
-```
-
-Enable in `.claude/settings.local.json`:
-
-```json
-{
-  "enabledMcpjsonServers": ["heurchain"]
-}
-```
-
-Restart Claude Code. Confirm with `claude mcp list` — you should see `heurchain: ✓ Connected`.
-
-All 26 tools are then available in-context. Use `heurchain_search` for knowledge base queries (BM25 ranked). Use `cache_set` / `cache_get` for direct Redis access.
-
----
-
-### Kimi (Moonshot) and other MCP SSE clients
-
-Same as Claude Code — point at the nginx gateway SSE endpoint:
-
-```
-http://<your-host>/sse
-```
-
-Kimi confirmed: full read/write, all tools available including `heurchain_search`, `obsidian_write_note`, `user_context_add_entry`, Prometheus, Grafana, Proxmox, and Ceph tools.
-
----
-
-### OpenClaw
-
-Add to your OpenClaw agent config or environment:
-
-```env
-HEURCHAIN_URL=http://<your-host>:3012
-```
-
-Use direct REST calls to the broker. No SSE required. OpenClaw agents confirmed: session start/end, `/agent/store` with persist flag, BM25 search, full session recall all working.
-
-```javascript
-// Start a session
-const { session_id } = await fetch(`${HEURCHAIN_URL}/session/start`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ agent_name: 'openclaw', metadata: { task: 'current task' } })
-}).then(r => r.json());
-
-// Store with persistence
-await fetch(`${HEURCHAIN_URL}/agent/store`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    agent_name: 'openclaw', session_id,
-    key: 'task_result', content: '...', persist: true
-  })
-});
-
-// BM25 search
-const { results } = await fetch(`${HEURCHAIN_URL}/search?q=campaign+status&limit=10`).then(r => r.json());
-```
-
----
-
-### Hermes / Ori-Mnemos
-
-Direct HTTP to the broker. Hermes confirmed all 12 endpoints, Swagger UI at `/docs`, OpenAPI spec at `/openapi.json`.
-
-```python
-import httpx
-
-BASE = "http://<your-host>:3012"
-
-# Session lifecycle
-session = httpx.post(f"{BASE}/session/start", json={"agent_name": "hermes"}).json()
-session_id = session["session_id"]
-
-# Store working memory
-httpx.post(f"{BASE}/agent/store", json={
-    "agent_name": "hermes", "session_id": session_id,
-    "key": "embedding_notes", "content": "...", "persist": False
-})
-
-# Recall prior context
-context = httpx.get(f"{BASE}/agent/hermes/recall").json()
-
-# End session
-httpx.post(f"{BASE}/session/end", json={"session_id": session_id, "summary": "..."})
-```
-
----
-
-### ChatGPT / GPT Actions
-
-Point GPT Actions at the nginx gateway. The broker speaks plain JSON — no special headers required.
-
-```yaml
-openapi: 3.1.0
-info:
-  title: HeurChain Memory API
-  version: 2.0.0
-servers:
-  - url: http://<your-host>
-paths:
-  /search:
-    get:
-      operationId: searchMemory
-      parameters:
-        - name: q
-          in: query
-          required: true
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, default: 10 }
-  /store:
-    post:
-      operationId: storeMemory
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [key, content]
-              properties:
-                key: { type: string }
-                content: { type: string }
-                tier: { type: string, enum: [auto, working, longterm] }
-```
-
----
-
-### Generic HTTP (PowerShell, curl, any client)
-
-```powershell
-# Store
-Invoke-RestMethod -Method POST -Uri "http://<host>:3012/store" `
-  -ContentType "application/json" `
-  -Body '{"key":"doc:myapp:notes","content":"hello world","tier":"longterm"}'
-
-# Search
-Invoke-RestMethod "http://<host>:3012/search?q=hello&limit=5"
-
-# Start session
-$s = Invoke-RestMethod -Method POST -Uri "http://<host>:3012/session/start" `
-  -ContentType "application/json" -Body '{"agent_name":"ps-agent"}'
-```
-
-```bash
-# curl
-curl -X POST http://<host>:3012/store \
-  -H "Content-Type: application/json" \
-  -d '{"key":"doc:myapp:notes","content":"hello world"}'
-
-curl "http://<host>:3012/search?q=hello&limit=5"
-```
-
----
-
-## Session protocol
-
-Every agent interaction should follow this lifecycle. The full machine-readable version is in `AGENT_CONFIG.json` (bundled with the npm package at `node_modules/heurchain/AGENT_CONFIG.json`). Agents that can fetch URLs can also read this page directly at `https://www.npmjs.com/package/heurchain` to self-configure without any manual wiring.
-
-```
-Startup
-  1. POST /session/start  →  {session_id}
-  2. GET  /agent/{name}/recall  →  restore prior context
-  3. GET  /health  →  verify backends before starting work
-
-During work
-  • POST /agent/store  persist=false  →  scratch notes (working tier)
-  • POST /agent/store  persist=true   →  durable findings (both tiers)
-  • GET  /search?q=   →  query knowledge base before answering
-
-Shutdown
-  1. Persist key findings with persist=true
-  2. POST /session/end  {session_id, summary}  →  summary is searchable in future sessions
-```
-
----
-
-## API reference
-
-All endpoints are on the broker at `:3012`. No authentication required.
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Redis, Ori vault, Obsidian vault status |
-| `GET` | `/docs` | Swagger UI |
-| `GET` | `/openapi.json` | OpenAPI 3.1 spec |
-| `POST` | `/store` | Store memory with auto tier routing |
-| `GET` | `/get?key=&tier=` | Get by exact key (all/longterm/working) |
-| `GET` | `/search?q=&limit=&tier=` | BM25 ranked search across all tiers |
-| `GET` | `/keys?prefix=` | List Redis keys by prefix |
-| `POST` | `/promote?key=&new_key=` | Promote working-tier entry to longterm Redis |
-| `POST` | `/session/start` | Start agent session → `{session_id}` |
-| `POST` | `/session/end` | End session, attach summary |
-| `GET` | `/session/{id}` | Session metadata |
-| `GET` | `/session/{id}/context` | All memory stored under a session |
-| `GET` | `/agent/{name}/sessions` | All sessions for an agent, newest first |
-| `GET` | `/agent/{name}/recall` | Full context of most recent session |
-| `POST` | `/agent/store` | Store with automatic `agent_name + session_id` namespacing |
-
----
-
-## Key schema and tier routing
-
-Keys determine which storage tier receives the write. Tier routing is automatic when `tier=auto` (default).
-
-| Key pattern | Tier | Purpose |
-|---|---|---|
-| `memory:agent:{name}:{sid}:{key}` | working | Session-scoped scratch space |
-| `doc:agent:{name}:{key}` | longterm | Agent persistent documents |
-| `doc:{domain}:{topic}` | longterm | Shared reference documents |
-| `knowledge:{domain}:{key}` | longterm | Shared knowledge base |
-| `session:{id}` | longterm | Session metadata (auto-managed) |
-| `agent:{name}:sessions` | Redis SET | Session registry (auto-managed) |
-
-Always namespace your agent's own keys with your `agent_name` to prevent collisions with other agents.
-
----
-
-## MCP tool reference
-
-Available when connected via SSE (Claude Code, Kimi, any MCP client):
-
-| Category | Tools |
+| Path | Contents |
 |---|---|
-| Cache | `cache_set`, `cache_get`, `cache_delete`, `redis_stats` |
-| Search | `heurchain_search` ← **preferred** (BM25 ranked), `obsidian_search_notes` (fallback) |
-| Vault | `obsidian_write_note`, `obsidian_read_note`, `obsidian_delete_note`, `obsidian_list_notes` |
-| Monitoring | `prometheus_query`, `prometheus_get_targets`, `prometheus_get_alerts` |
-| Grafana | `grafana_get_health`, `grafana_list_dashboards` |
-| Infrastructure | `proxmox_get_cluster_status`, `proxmox_list_nodes`, `proxmox_find_vm` |
-| Ceph | `ceph_get_health_status`, `ceph_list_osd_notes` |
-| Network | `network_search_docs`, `network_get_runbook` |
-| User context | `user_context_add_entry`, `user_context_get_history`, `user_context_search_history` |
-| Health | `health_check` |
+| [`broker/`](broker) | The Go memory broker, version 0.6.1 |
+| [`broker/schema.sql`](broker/schema.sql) | SQLite baseline schema, embedded in the broker and applied on first start |
+| [`deploy/`](deploy) | Dockerfile, Compose stack, example config, systemd unit |
+| [`docs/`](docs) | Installation and operation |
+| [`research/`](research) | Retrieval research and findings ([summary](research/FINDINGS.md)) |
+| [`results/`](results) | Completed evaluation results and offline verification receipts |
 
-Use `heurchain_search` over `obsidian_search_notes` for any knowledge base query — it runs BM25 over the full Redis keyspace (460+ keys), not just filesystem markdown files.
+## Build and test
 
----
-
-## Configuration
-
-Set via `.env` (Docker standalone) or Ansible inventory (managed host).
-
-| Variable | Default | Description |
-|---|---|---|
-| `REDIS_HOST` | `localhost` | Redis hostname |
-| `REDIS_PORT` | `6379` | Redis port |
-| `MEMORY_BROKER_PORT` | `3012` | Broker listen port |
-| `MCP_PORT` | `3010` | MCP server listen port |
-| `NGINX_PORT` | `80` | Host-side nginx port (SSE entry point) |
-| `HEURCHAIN_PORT` | `3012` | Host-side broker port |
-| `OBSIDIAN_VAULT_PATH` | `./data/obsidian-vault` | Markdown vault root |
-| `ORI_VAULT_PATH` | `./data/ori-vault` | Working tier markdown directory |
-| `GRAFANA_USER` | `admin` | Grafana auth for MCP monitoring tools |
-| `GRAFANA_PASSWORD` | `admin` | Grafana auth for MCP monitoring tools |
-| `OLLAMA_URL` | `http://host.docker.internal:11434` | Ollama for consolidation worker |
-| `CONSOLIDATE_AGE_DAYS` | `7` | Age threshold before working-tier auto-promotes to longterm |
-
----
-
-## Deployment
-
-### Ansible (production — managed Linux host)
-
-Provisions the full stack: system Redis, HeurChain broker (systemd service), Docker MCP stack, Prometheus + Grafana monitoring.
-
-```bash
-# 1. Fill in inventory
-cp inventory.yml.example inventory.yml
-vim inventory.yml
-
-# 2. Deploy everything
-ansible-playbook playbook.yml
-
-# 3. Selective re-deploys
-ansible-playbook playbook.yml --tags heurchain     # broker only
-ansible-playbook playbook.yml --tags docker        # MCP + nginx stack only
-ansible-playbook playbook.yml --tags system-redis  # Redis config only
-ansible-playbook playbook.yml --tags monitoring    # Prometheus + Grafana only
+```sh
+cd broker
+go build ./...
+go test ./...      # uses an in-memory Redis; no services needed
 ```
 
-Role order: `system-prereqs` → `obsidian-vault` → `system-redis` → `heurchain` → `docker-stack` → `monitoring`
+Go 1.23 or newer. The broker uses pure-Go SQLite, so no C toolchain is required.
 
-### Docker standalone (development / unmanaged hosts)
+## Research findings
 
-```bash
-cd docker/
-cp .env.example .env
-docker compose -f docker-compose.standalone.yml up -d --build
-```
+The self-hosted research line compared HeurChain with Mem0 on LoCoMo and studied why
+retrieval misses happen. The headline results and the practical advice for 0.6.1 users
+(put absolute dates in stored text; ask `/search` for more results on multi-hop recall) are
+in [research/FINDINGS.md](research/FINDINGS.md).
 
-Requires Docker Compose v2 (`docker compose` plugin or `docker-compose >= 2.x`).
+## Upgrading from 1.x
 
----
+Releases up to 1.4.2 were a Node.js service deployed with Ansible. They are replaced by this
+Go broker; the old code remains in this repository's git history (tag-free; last commit
+`0e0f6e1`). The data model changed, so see the upgrade notes in
+[docs/install.md](docs/install.md#upgrading-from-the-1x-node-edition).
 
 ## License
 
-MIT
+[MIT](LICENSE). Third-party Go modules keep their own licenses; see `broker/go.mod`.

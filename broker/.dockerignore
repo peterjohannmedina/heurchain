@@ -1,0 +1,9 @@
+broker
+broker.exe
+broker_new.exe
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+admin-ui/node_modules

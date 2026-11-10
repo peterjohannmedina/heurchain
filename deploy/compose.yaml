@@ -1,0 +1,59 @@
+# HeurChain self-hosted stack: broker 0.6.1 + Redis + Qdrant + Ollama embeddings.
+#
+#   cp deploy/.env.example deploy/.env      # then set ADMIN_USER / ADMIN_PASS
+#   docker compose -f deploy/compose.yaml up -d --build
+#   docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
+#
+# Every port is published on 127.0.0.1 only. Put a TLS reverse proxy in front
+# of the broker before exposing it to other machines (see docs/install.md).
+name: heurchain
+
+services:
+  broker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: heurchain-broker:0.6.1
+    restart: unless-stopped
+    env_file: [./.env]
+    environment:
+      QDRANT_URL: http://qdrant:6333
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    ports: ["127.0.0.1:8080:8080"]
+    volumes:
+      - ./broker.yaml:/etc/heurchain/broker.yaml:ro
+      - broker-data:/var/lib/heurchain
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
+    volumes: ["qdrant-data:/qdrant/storage"]
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    restart: unless-stopped
+    volumes: ["ollama-data:/root/.ollama"]
+
+volumes:
+  broker-data:
+  redis-data:
+  qdrant-data:
+  ollama-data:

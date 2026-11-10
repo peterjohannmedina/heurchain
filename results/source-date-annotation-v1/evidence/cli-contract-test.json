@@ -1,0 +1,17 @@
+{
+  "name": "cli-contract-test",
+  "argv": [
+    "C:\\Python314\\python.exe",
+    "-I",
+    "-S",
+    "-B",
+    "test_cli_contract.py"
+  ],
+  "cwd": "[machine-local value omitted; original receipt hash retained]",
+  "exit_code": 0,
+  "seconds": 0.683,
+  "log": "[machine-local value omitted; original receipt hash retained]",
+  "log_sha256": "a5b68570723fa53cd24095d46ffc9ec1e32db158f37a24ef0e2cb8ed642244a3",
+  "test_pass_events": 0,
+  "test_skip_events": []
+}

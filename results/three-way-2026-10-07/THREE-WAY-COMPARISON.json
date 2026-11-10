@@ -1,0 +1,744 @@
+{
+  "schema": "heurchain-three-way-exact-DEV-final/v1",
+  "status": "COMPLETE701_ANSWERS_AND543_MATCHED_VERDICTS_PER_ARM_VERIFIED",
+  "recorded_utc": "2026-10-07T05:31:49.382653+00:00",
+  "candidate_terminal_utc": "2026-10-07T05:12:31.064348+00:00",
+  "overall": {
+    "baseline": {
+      "questions": 543,
+      "correct": 360,
+      "wrong": 183,
+      "percent": 66.29834254143647
+    },
+    "candidate": {
+      "questions": 543,
+      "correct": 363,
+      "wrong": 180,
+      "percent": 66.85082872928177
+    },
+    "Mem0": {
+      "questions": 543,
+      "correct": 369,
+      "wrong": 174,
+      "percent": 67.95580110497238
+    }
+  },
+  "paired_differences": {
+    "candidate_vs_baseline": {
+      "left": "baseline",
+      "right": "candidate",
+      "both_correct": 340,
+      "both_wrong": 160,
+      "left_only_correct": 20,
+      "right_only_correct": 23,
+      "right_minus_left_correct": 3,
+      "right_minus_left_percentage_points": 0.5524861878453039
+    },
+    "Mem0_vs_baseline": {
+      "left": "baseline",
+      "right": "Mem0",
+      "both_correct": 293,
+      "both_wrong": 107,
+      "left_only_correct": 67,
+      "right_only_correct": 76,
+      "right_minus_left_correct": 9,
+      "right_minus_left_percentage_points": 1.6574585635359116
+    },
+    "candidate_vs_Mem0": {
+      "left": "Mem0",
+      "right": "candidate",
+      "both_correct": 294,
+      "both_wrong": 105,
+      "left_only_correct": 75,
+      "right_only_correct": 69,
+      "right_minus_left_correct": -6,
+      "right_minus_left_percentage_points": -1.1049723756906078
+    }
+  },
+  "categories": {
+    "1": {
+      "name": "Multi-hop",
+      "scores": {
+        "baseline": {
+          "questions": 106,
+          "correct": 50,
+          "wrong": 56,
+          "percent": 47.16981132075472
+        },
+        "candidate": {
+          "questions": 106,
+          "correct": 57,
+          "wrong": 49,
+          "percent": 53.77358490566038
+        },
+        "Mem0": {
+          "questions": 106,
+          "correct": 57,
+          "wrong": 49,
+          "percent": 53.77358490566038
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 45,
+          "both_wrong": 44,
+          "left_only_correct": 5,
+          "right_only_correct": 12,
+          "right_minus_left_correct": 7,
+          "right_minus_left_percentage_points": 6.60377358490566
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 37,
+          "both_wrong": 36,
+          "left_only_correct": 13,
+          "right_only_correct": 20,
+          "right_minus_left_correct": 7,
+          "right_minus_left_percentage_points": 6.60377358490566
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 43,
+          "both_wrong": 35,
+          "left_only_correct": 14,
+          "right_only_correct": 14,
+          "right_minus_left_correct": 0,
+          "right_minus_left_percentage_points": 0.0
+        }
+      }
+    },
+    "2": {
+      "name": "Temporal",
+      "scores": {
+        "baseline": {
+          "questions": 122,
+          "correct": 76,
+          "wrong": 46,
+          "percent": 62.295081967213115
+        },
+        "candidate": {
+          "questions": 122,
+          "correct": 72,
+          "wrong": 50,
+          "percent": 59.01639344262295
+        },
+        "Mem0": {
+          "questions": 122,
+          "correct": 94,
+          "wrong": 28,
+          "percent": 77.04918032786885
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 66,
+          "both_wrong": 40,
+          "left_only_correct": 10,
+          "right_only_correct": 6,
+          "right_minus_left_correct": -4,
+          "right_minus_left_percentage_points": -3.278688524590164
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 67,
+          "both_wrong": 19,
+          "left_only_correct": 9,
+          "right_only_correct": 27,
+          "right_minus_left_correct": 18,
+          "right_minus_left_percentage_points": 14.754098360655737
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 63,
+          "both_wrong": 19,
+          "left_only_correct": 31,
+          "right_only_correct": 9,
+          "right_minus_left_correct": -22,
+          "right_minus_left_percentage_points": -18.0327868852459
+        }
+      }
+    },
+    "3": {
+      "name": "Open-domain",
+      "scores": {
+        "baseline": {
+          "questions": 28,
+          "correct": 9,
+          "wrong": 19,
+          "percent": 32.142857142857146
+        },
+        "candidate": {
+          "questions": 28,
+          "correct": 8,
+          "wrong": 20,
+          "percent": 28.571428571428573
+        },
+        "Mem0": {
+          "questions": 28,
+          "correct": 6,
+          "wrong": 22,
+          "percent": 21.428571428571427
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 7,
+          "both_wrong": 18,
+          "left_only_correct": 2,
+          "right_only_correct": 1,
+          "right_minus_left_correct": -1,
+          "right_minus_left_percentage_points": -3.5714285714285716
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 6,
+          "both_wrong": 19,
+          "left_only_correct": 3,
+          "right_only_correct": 0,
+          "right_minus_left_correct": -3,
+          "right_minus_left_percentage_points": -10.714285714285714
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 4,
+          "both_wrong": 18,
+          "left_only_correct": 2,
+          "right_only_correct": 4,
+          "right_minus_left_correct": 2,
+          "right_minus_left_percentage_points": 7.142857142857143
+        }
+      }
+    },
+    "4": {
+      "name": "Single-hop",
+      "scores": {
+        "baseline": {
+          "questions": 287,
+          "correct": 225,
+          "wrong": 62,
+          "percent": 78.397212543554
+        },
+        "candidate": {
+          "questions": 287,
+          "correct": 226,
+          "wrong": 61,
+          "percent": 78.74564459930313
+        },
+        "Mem0": {
+          "questions": 287,
+          "correct": 212,
+          "wrong": 75,
+          "percent": 73.86759581881533
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 222,
+          "both_wrong": 58,
+          "left_only_correct": 3,
+          "right_only_correct": 4,
+          "right_minus_left_correct": 1,
+          "right_minus_left_percentage_points": 0.34843205574912894
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 183,
+          "both_wrong": 33,
+          "left_only_correct": 42,
+          "right_only_correct": 29,
+          "right_minus_left_correct": -13,
+          "right_minus_left_percentage_points": -4.529616724738676
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 184,
+          "both_wrong": 33,
+          "left_only_correct": 28,
+          "right_only_correct": 42,
+          "right_minus_left_correct": 14,
+          "right_minus_left_percentage_points": 4.878048780487805
+        }
+      }
+    }
+  },
+  "by_conversation": {
+    "conv-26": {
+      "scores": {
+        "baseline": {
+          "questions": 152,
+          "correct": 101,
+          "wrong": 51,
+          "percent": 66.44736842105263
+        },
+        "candidate": {
+          "questions": 152,
+          "correct": 96,
+          "wrong": 56,
+          "percent": 63.1578947368421
+        },
+        "Mem0": {
+          "questions": 152,
+          "correct": 100,
+          "wrong": 52,
+          "percent": 65.78947368421052
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 92,
+          "both_wrong": 47,
+          "left_only_correct": 9,
+          "right_only_correct": 4,
+          "right_minus_left_correct": -5,
+          "right_minus_left_percentage_points": -3.289473684210526
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 78,
+          "both_wrong": 29,
+          "left_only_correct": 23,
+          "right_only_correct": 22,
+          "right_minus_left_correct": -1,
+          "right_minus_left_percentage_points": -0.6578947368421053
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 74,
+          "both_wrong": 30,
+          "left_only_correct": 26,
+          "right_only_correct": 22,
+          "right_minus_left_correct": -4,
+          "right_minus_left_percentage_points": -2.6315789473684212
+        }
+      }
+    },
+    "conv-30": {
+      "scores": {
+        "baseline": {
+          "questions": 81,
+          "correct": 56,
+          "wrong": 25,
+          "percent": 69.1358024691358
+        },
+        "candidate": {
+          "questions": 81,
+          "correct": 56,
+          "wrong": 25,
+          "percent": 69.1358024691358
+        },
+        "Mem0": {
+          "questions": 81,
+          "correct": 52,
+          "wrong": 29,
+          "percent": 64.19753086419753
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 52,
+          "both_wrong": 21,
+          "left_only_correct": 4,
+          "right_only_correct": 4,
+          "right_minus_left_correct": 0,
+          "right_minus_left_percentage_points": 0.0
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 45,
+          "both_wrong": 18,
+          "left_only_correct": 11,
+          "right_only_correct": 7,
+          "right_minus_left_correct": -4,
+          "right_minus_left_percentage_points": -4.938271604938271
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 43,
+          "both_wrong": 16,
+          "left_only_correct": 9,
+          "right_only_correct": 13,
+          "right_minus_left_correct": 4,
+          "right_minus_left_percentage_points": 4.938271604938271
+        }
+      }
+    },
+    "conv-41": {
+      "scores": {
+        "baseline": {
+          "questions": 152,
+          "correct": 97,
+          "wrong": 55,
+          "percent": 63.81578947368421
+        },
+        "candidate": {
+          "questions": 152,
+          "correct": 108,
+          "wrong": 44,
+          "percent": 71.05263157894737
+        },
+        "Mem0": {
+          "questions": 152,
+          "correct": 110,
+          "wrong": 42,
+          "percent": 72.36842105263158
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 95,
+          "both_wrong": 42,
+          "left_only_correct": 2,
+          "right_only_correct": 13,
+          "right_minus_left_correct": 11,
+          "right_minus_left_percentage_points": 7.2368421052631575
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 83,
+          "both_wrong": 28,
+          "left_only_correct": 14,
+          "right_only_correct": 27,
+          "right_minus_left_correct": 13,
+          "right_minus_left_percentage_points": 8.552631578947368
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 92,
+          "both_wrong": 26,
+          "left_only_correct": 18,
+          "right_only_correct": 16,
+          "right_minus_left_correct": -2,
+          "right_minus_left_percentage_points": -1.3157894736842106
+        }
+      }
+    },
+    "conv-50": {
+      "scores": {
+        "baseline": {
+          "questions": 158,
+          "correct": 106,
+          "wrong": 52,
+          "percent": 67.0886075949367
+        },
+        "candidate": {
+          "questions": 158,
+          "correct": 103,
+          "wrong": 55,
+          "percent": 65.18987341772151
+        },
+        "Mem0": {
+          "questions": 158,
+          "correct": 107,
+          "wrong": 51,
+          "percent": 67.72151898734177
+        }
+      },
+      "paired_differences": {
+        "candidate_vs_baseline": {
+          "left": "baseline",
+          "right": "candidate",
+          "both_correct": 101,
+          "both_wrong": 50,
+          "left_only_correct": 5,
+          "right_only_correct": 2,
+          "right_minus_left_correct": -3,
+          "right_minus_left_percentage_points": -1.8987341772151898
+        },
+        "Mem0_vs_baseline": {
+          "left": "baseline",
+          "right": "Mem0",
+          "both_correct": 87,
+          "both_wrong": 32,
+          "left_only_correct": 19,
+          "right_only_correct": 20,
+          "right_minus_left_correct": 1,
+          "right_minus_left_percentage_points": 0.6329113924050633
+        },
+        "candidate_vs_Mem0": {
+          "left": "Mem0",
+          "right": "candidate",
+          "both_correct": 85,
+          "both_wrong": 33,
+          "left_only_correct": 22,
+          "right_only_correct": 18,
+          "right_minus_left_correct": -4,
+          "right_minus_left_percentage_points": -2.5316455696202533
+        }
+      }
+    }
+  },
+  "coverage": {
+    "source_turns": 2019,
+    "native_batches": 117,
+    "answers_per_arm": 701,
+    "judge_questions_per_arm": 543,
+    "adversarial_questions_excluded_from_primary_score": 158,
+    "DEV_conversations": 4,
+    "heldout_conversations_sealed": 6,
+    "answer_attempts": {
+      "baseline": {
+        "completed": 701,
+        "claimed_attempts": 703,
+        "failed_attempts": 2
+      },
+      "candidate": {
+        "completed": 701,
+        "claimed_attempts": 702,
+        "failed_attempts": 1
+      },
+      "Mem0": {
+        "completed": 701,
+        "claimed_attempts": 701,
+        "failed_attempts": 0
+      }
+    },
+    "judge_attempts": {
+      "baseline": {
+        "completed": 543,
+        "claimed_attempts": 543,
+        "failed_attempts": 0
+      },
+      "candidate": {
+        "completed": 543,
+        "claimed_attempts": 543,
+        "failed_attempts": 0
+      },
+      "Mem0": {
+        "completed": 543,
+        "claimed_attempts": 544,
+        "failed_attempts": 1
+      }
+    },
+    "Mem0_extraction_attempts": 117,
+    "candidate_total_client_attempts": 1245,
+    "Mem0_total_model_attempts": 1362,
+    "baseline_answer_plus_judge_attempts": 1246,
+    "candidate_new_native_or_embedding_dispatches_on_continuation": 0
+  },
+  "successful_reported_usage": {
+    "baseline": {
+      "answers": {
+        "inputTokens": 10805582,
+        "cachedInputTokens": 5744896,
+        "outputTokens": 17974,
+        "reasoningOutputTokens": 0
+      },
+      "judge_successful543": {
+        "inputTokens": 6121604,
+        "cachedInputTokens": 5669120,
+        "outputTokens": 8688,
+        "reasoningOutputTokens": 0
+      }
+    },
+    "candidate": {
+      "answers": {
+        "inputTokens": 10806949,
+        "cachedInputTokens": 5958912,
+        "outputTokens": 17854,
+        "reasoningOutputTokens": 0
+      },
+      "judge_successful543": {
+        "inputTokens": 6121581,
+        "cachedInputTokens": 5691136,
+        "outputTokens": 8688,
+        "reasoningOutputTokens": 0
+      }
+    },
+    "Mem0": {
+      "answers": {
+        "inputTokens": 13278768,
+        "cachedInputTokens": 5812992,
+        "outputTokens": 16255,
+        "reasoningOutputTokens": 0
+      },
+      "judge_successful543": {
+        "inputTokens": 6120392,
+        "cachedInputTokens": 5620992,
+        "outputTokens": 8688,
+        "reasoningOutputTokens": 0
+      },
+      "extraction": {
+        "inputTokens": 2442256,
+        "cachedInputTokens": 833280,
+        "outputTokens": 35354,
+        "reasoningOutputTokens": 0
+      }
+    }
+  },
+  "successful_usage_credit_estimates": {
+    "baseline": {
+      "answers": 14.312614,
+      "judge_successful543": 2.65709,
+      "known_successful_total": 16.969704
+    },
+    "candidate": {
+      "answers": 13.8329955,
+      "judge_successful543": 2.6074965,
+      "known_successful_total": 16.440492
+    },
+    "Mem0": {
+      "answers": 20.3208755,
+      "judge_successful543": 2.762348,
+      "extraction": 4.672685,
+      "known_successful_total": 27.7559085
+    }
+  },
+  "failed_attempts_separately_preserved": [
+    {
+      "arm": "baseline",
+      "ordinal": 139,
+      "usage": null,
+      "outcome": "[machine-local value omitted; original receipt hash retained]",
+      "estimated_credits": null
+    },
+    {
+      "arm": "baseline",
+      "ordinal": 363,
+      "usage": null,
+      "outcome": "[machine-local value omitted; original receipt hash retained]",
+      "estimated_credits": null
+    },
+    {
+      "arm": "candidate",
+      "ordinal": 459,
+      "usage": null,
+      "outcome": "[machine-local value omitted; original receipt hash retained]",
+      "estimated_credits": null
+    },
+    {
+      "arm": "Mem0",
+      "judge_ordinal": 188,
+      "usage": null,
+      "outcome": "[machine-local value omitted; original receipt hash retained]",
+      "estimated_credits": null
+    }
+  ],
+  "usage_limits": {
+    "unknown_failed_charge_is_zero": false,
+    "actual_invoice_verified": false,
+    "provider_monetary_ceiling_enforced": false,
+    "pricing_credits_per_million": {
+      "uncached_input": 2.5,
+      "cached_input": 0.25,
+      "output": 12.5
+    },
+    "cached_input_included_in_input_total": true,
+    "successful_credit_estimates_exclude_unknown_failed_charges": true
+  },
+  "pins": {
+    "baseline_commit": "216e39eb8d91b69a75452037efd96bd597b5ffb6",
+    "baseline_binary_sha256": "62087baca3b9cd2241fbb8ac1eebe127dfd09c6c0d9f39f123a964399323bff8",
+    "candidate_commit": "7636913af7c15406ffd03db97ffac34a9d008b36",
+    "candidate_binary_sha256": "6c7a0cbbaea199c4c2b5099690a385180426aa4407af12a8dc1ca84f7f05c07e",
+    "candidate_continuation_manifest_sha256": "c00a9ded5c30bd2331d191b6e74f63d05b2081cc805c9c827ae971bb566cb2f7",
+    "Mem0_OSS_commit": "94c3fe9f238f3dbf29c9ce98643bd71eb13077cd",
+    "Mem0_manifest_sha256": "851b0490f1193b384edf77165be06b74a19e4d26dece66ef6dc9b35e6f93636d",
+    "answer_bundles": {
+      "baseline": "4f161349be5111312efe0d0ddabca82836466864154e9897180a9a8a164048be",
+      "candidate": "28c240901ce2093cf1ba313a02bad983b63bcba7ef622b66f3380d73274d4059",
+      "Mem0": "4e368ef9b1cbf4c4c02674c9f71646b666a4b5fde31e5dbdd3b65f0cbddb3d73"
+    },
+    "candidate_final_verdict_bundle_sha256": "686990f653bf9b5d77c6c3dfe3f306027225d1699d450ae3f9446b8e487b0094",
+    "historical_rubric_commit": "393a4fd5a6cfeb754857a2229726f567a9fadf36",
+    "historical_rubric_source_sha256": "311050fd39e991220e220b5e4b753725c3e7616d8cef84e8c737eb902fc13af8",
+    "CLI_sha256": "9e7c59c05cc1ce5677b1f94e835b2ac038ca3be14504e78d558eacdb0ea3f55d",
+    "supervisor_offline_manifest_sha256": "98b6bbce94e579ae85a2329251e815b1462ade6ac63748703d5d67c33d91159b",
+    "supervisor_local_commit": "bba5442d4b885f94e5801600ec993ff6554937c1"
+  },
+  "protocol": {
+    "generation_and_judge": "gpt-6-luna/low/default via existing Codex harness",
+    "judge_passes": 1,
+    "full_DEV_reference_labels": true,
+    "identical_whole_JSON_evidence_budget_UTF8_bytes": 16384,
+    "evidence_metadata_and_separators_counted": true,
+    "source_preserving_HeurChain_native_readiness_before_every_answer": true,
+    "same2019_source_question_order_and_answer_prompt_template": true,
+    "native_memory_retrieval_units_and_metadata_differ_between_HeurChain_and_Mem0": true,
+    "Mem0_default_native_ADD_recent_message_limit": 10,
+    "Mem0_external_source_ledger_preserves2019_turns_but_native_history_is_not_lossless": true,
+    "Mem0_native_semantics": "[machine-local value omitted; original receipt hash retained]",
+    "heldout_used": false,
+    "QA_or_gold_ingested_into_native_memory": false,
+    "human_audit_completed": false,
+    "source_factual_accuracy_established": false,
+    "same_model_judge_bias_measured": false,
+    "temperature_zero_control_available": false,
+    "paper_replication_claim": false,
+    "generalizable_advantage_established": false,
+    "invalid_or_unknown_attempts_scored_wrong": false
+  },
+  "cleanup": {
+    "per_successful_answer_and_judge_owned_worker_cleanup_reverified": true,
+    "independent_candidate_terminal_receipt": "[machine-local value omitted; original receipt hash retained]",
+    "fresh_candidate_native_cleanup_receipt": "[machine-local value omitted; original receipt hash retained]",
+    "fresh_candidate_native_cleanup_utc": "2026-10-07T05:19:26.671145+00:00",
+    "known_candidate_owner_PIDs_absent": {
+      "93068": "ABSENT_VERIFIED",
+      "14488": "ABSENT_VERIFIED",
+      "25460": "ABSENT_VERIFIED"
+    },
+    "owned_ports_listening": []
+  },
+  "supervisor": {
+    "root": "[machine-local value omitted; original receipt hash retained]",
+    "local_commit": "bba5442d4b885f94e5801600ec993ff6554937c1",
+    "offline_tests_passed": 75,
+    "independent_review_status": "OFFLINE_SOURCE_PASS",
+    "live_adapter_qualified": false,
+    "live_dispatch_or_recovery_authorized": false
+  },
+  "audit": {
+    "script": "[machine-local value omitted; original receipt hash retained]",
+    "script_sha256": "ea7fbcda688b119c165959d2e8f03e5ec37dd4e436aa6a39920116f067ad8b73",
+    "assertions_passed": 93819,
+    "unique_source_receipt_files_rehashed": 25245,
+    "raw_answer_gold_or_secret_exported": false,
+    "model_calls": 0,
+    "native_calls": 0,
+    "embedding_calls": 0,
+    "network_calls": 0,
+    "active_run_mutations": 0,
+    "all_existing_reports_preserved": true,
+    "quality_scoring_method": "Recomputed exact saved binary verdicts and joins; no new judging."
+  },
+  "remaining_execution_blockers": [],
+  "remaining_measurement_limitations": [
+    "Single same-model local judge pass; no human or source-level factual audit.",
+    "Only four fixed DEV conversations; six heldout conversations remain sealed.",
+    "Original failed candidate answer and Mem0 judge charges remain unknown; saved baseline failures are reported separately.",
+    "Mem0 OSS2026 native configuration is not a replication of the published2025 system."
+  ],
+  "future_activation_blockers": [
+    "No new inference/recovery authority.",
+    "Unqualified live adapter remains blocked.",
+    "Enforceable provider monetary and pre-dispatch token ceilings remain unresolved; draft completed-response guards are not billing caps."
+  ]
+}
