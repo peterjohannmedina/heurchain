@@ -300,7 +300,7 @@ returns ` + "`duration_ms`" + `. A newer active record returns ` + "`409 Conflic
 |---|---|---|
 | Credential location | system-config | Which secret store holds the configured connection, without its value |
 | Architecture decision | ` + "`decision`" + ` | ` + "`\"Chose PostgreSQL over MySQL — reason: JSON operators\"`" + ` |
-| User-stated fact | ` + "`fact`" + ` | ` + "`\"Peter's email is peter@carlssoncreative.com\"`" + ` |
+| User-stated fact | ` + "`fact`" + ` | ` + "`\"The user's email is alex@example.com\"`" + ` |
 | Project layout | ` + "`project-context`" + ` | ` + "`\"OpenClaw: VM 242, user rm, pnpm monorepo at ~/openclaw\"`" + ` |
 | Server / env config | ` + "`system-config`" + ` | ` + "`\"HeurChain tenant abc-123, key rotated 2026-05-13\"`" + ` |
 | Session summary | ` + "`conversation`" + ` | One-paragraph summary of what was done and what's pending |

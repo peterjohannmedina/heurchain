@@ -46,6 +46,7 @@ TLS, backups and upgrading from the 1.x Node edition.
 | [`broker/schema.sql`](broker/schema.sql) | SQLite baseline schema, embedded in the broker and applied on first start |
 | [`deploy/`](deploy) | Dockerfile, Compose stack, example config, systemd unit |
 | [`docs/`](docs) | Installation and operation |
+| [`npm/`](npm) | Source of the `heurchain` npm package: setup guide and agent configuration (no server) |
 | [`research/`](research) | Retrieval research and findings ([summary](research/FINDINGS.md)) |
 | [`results/`](results) | Completed evaluation results and offline verification receipts |
 

@@ -1,0 +1,38 @@
+{
+  "name": "heurchain",
+  "version": "2.0.0",
+  "description": "Setup guide and agent configuration for the self-hosted HeurChain memory broker (0.6.1): persistent, hybrid-search memory shared by every AI agent over MCP or HTTP",
+  "keywords": [
+    "mcp",
+    "heurchain",
+    "agent-memory",
+    "llm",
+    "ai",
+    "model-context-protocol",
+    "bm25",
+    "rag",
+    "self-hosted",
+    "claude"
+  ],
+  "homepage": "https://github.com/peterjohannmedina/heurchain#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peterjohannmedina/heurchain.git",
+    "directory": "npm"
+  },
+  "bugs": {
+    "url": "https://github.com/peterjohannmedina/heurchain/issues"
+  },
+  "license": "MIT",
+  "author": "HeurChain <info@heurchain.com>",
+  "files": [
+    "AGENT_CONFIG.json",
+    "AGENT_ONBOARDING.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    "./AGENT_CONFIG.json": "./AGENT_CONFIG.json",
+    "./AGENT_ONBOARDING.md": "./AGENT_ONBOARDING.md",
+    "./package.json": "./package.json"
+  }
+}
