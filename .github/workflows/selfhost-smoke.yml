@@ -1,0 +1,123 @@
+# End-to-end check of the self-hosted install, exactly as a new user runs it:
+# clean checkout -> deploy/.env -> docker compose up --build -> pull the
+# embedding model -> create a tenant -> store, search, sessions, MCP -> restart
+# and confirm the memory survived.
+name: self-host smoke test
+
+on:
+  pull_request:
+    paths:
+      - "broker/**"
+      - "deploy/**"
+      - ".github/workflows/selfhost-smoke.yml"
+  push:
+    branches: [master]
+    paths:
+      - "broker/**"
+      - "deploy/**"
+      - ".github/workflows/selfhost-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE: http://127.0.0.1:8080
+      COMPOSE: docker compose -f deploy/compose.yaml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure deploy/.env
+        run: |
+          cp deploy/.env.example deploy/.env
+          sed -i "s/^ADMIN_USER=.*/ADMIN_USER=smoke-admin/" deploy/.env
+          sed -i "s/^ADMIN_PASS=.*/ADMIN_PASS=$(openssl rand -hex 24)/" deploy/.env
+          chmod 600 deploy/.env
+
+      - name: docker compose up --build
+        run: $COMPOSE up -d --build
+
+      - name: Pull the embedding model
+        run: |
+          for i in $(seq 1 30); do $COMPOSE exec -T ollama ollama list >/dev/null 2>&1 && break; sleep 2; done
+          $COMPOSE exec -T ollama ollama pull nomic-embed-text
+
+      - name: Wait for the broker
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS "$BASE/health" >/dev/null; then curl -sS "$BASE/health"; echo; exit 0; fi
+            sleep 2
+          done
+          $COMPOSE logs broker; exit 1
+
+      - name: Store, search, sessions and MCP
+        run: |
+          set -euo pipefail
+          . deploy/.env
+          j() { python3 -c "import json,sys; d=json.load(sys.stdin); print(eval(sys.argv[1], {'d': d}))" "$1"; }
+
+          echo "== admin: create tenant"
+          T=$(curl -fsS -u "$ADMIN_USER:$ADMIN_PASS" -H 'Content-Type: application/json' \
+                -X POST "$BASE/admin/tenants" -d '{"name":"Smoke","email":"smoke@example.com"}')
+          TENANT=$(echo "$T" | j "d['tenant_id']"); KEY=$(echo "$T" | j "d['api_key']")
+          echo "::add-mask::$KEY"
+          H=(-H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" -H 'Content-Type: application/json')
+          echo "TENANT=$TENANT" >> "$GITHUB_ENV"; echo "KEY=$KEY" >> "$GITHUB_ENV"
+
+          echo "== unauthenticated store is refused"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/store" -H 'Content-Type: application/json' -d '{"text":"x"}')
+          test "$code" = 401 -o "$code" = 400
+
+          echo "== session start"
+          S=$(curl -fsS "${H[@]}" -X POST "$BASE/session/start" -d '{"agent_id":"smoke"}'); echo "$S"
+          SID=$(echo "$S" | j "d['session_id']")
+
+          echo "== store"
+          R=$(curl -fsS "${H[@]}" -X POST "$BASE/store" -d "{\"agent_id\":\"smoke\",\"text\":\"The staging database moved to port 5433 on 2026-11-01.\",\"tags\":[\"fact\"],\"metadata\":{\"session_id\":\"$SID\"}}")
+          echo "$R"
+          test "$(echo "$R" | j "d.get('indexed', True)")" = True
+
+          echo "== hybrid search (BM25 + Qdrant dense)"
+          R=$(curl -fsS "${H[@]}" -X POST "$BASE/search" -d '{"text":"which port does staging db use"}')
+          echo "$R" | python3 -m json.tool | head -60
+          echo "$R" | j "d['results'][0]['text']" | grep -q 5433
+          echo "dense_status=$(echo "$R" | j "d['retrieval']['dense_status']") bm25_status=$(echo "$R" | j "d['retrieval']['bm25_status']")"
+          test "$(echo "$R" | j "d['retrieval']['dense_candidates'] > 0")" = True
+
+          echo "== session end, agent recall, manifest"
+          curl -fsS "${H[@]}" -X POST "$BASE/session/end" -d "{\"session_id\":\"$SID\",\"agent_id\":\"smoke\",\"summary\":\"smoke test\"}"; echo
+          curl -fsS "${H[@]}" "$BASE/agent/smoke" | head -c 600; echo
+          curl -fsS "${H[@]}" "$BASE/memory/manifest" | head -c 600; echo
+
+          echo "== MCP over Streamable HTTP"
+          M=(-H "Accept: application/json, text/event-stream")
+          curl -fsS "${H[@]}" "${M[@]}" -X POST "$BASE/mcp/sse" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"1"}}}' | head -c 400; echo
+          TL=$(curl -fsS "${H[@]}" "${M[@]}" -X POST "$BASE/mcp/sse" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' | sed -n 's/^data: //p;/^{/p' | head -1)
+          echo "tools: $(echo "$TL" | j "len(d['result']['tools'])")"
+          CALL=$(curl -fsS "${H[@]}" "${M[@]}" -X POST "$BASE/mcp/sse" \
+            -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"heurchain_search","arguments":{"text":"staging database port"}}}' | sed -n 's/^data: //p;/^{/p' | head -1)
+          echo "$CALL" | head -c 800; echo
+          echo "$CALL" | grep -q 5433
+
+      - name: Memory survives a restart
+        run: |
+          set -euo pipefail
+          $COMPOSE restart broker
+          for i in $(seq 1 60); do curl -fsS "$BASE/health" >/dev/null 2>&1 && break; sleep 2; done
+          curl -fsS -H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" -H 'Content-Type: application/json' \
+            -X POST "$BASE/search" -d '{"text":"staging database port"}' | grep -q 5433
+
+      - name: Logs on failure
+        if: failure()
+        run: $COMPOSE logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: $COMPOSE down -v
