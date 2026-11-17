@@ -35,6 +35,11 @@ embed:
   ollama_url: "http://ollama:11434"
   ollama_model: "nomic-embed-text"
 
+# Keep archive restore admin-only unless all tenant API key holders on this broker
+# should be able to reactivate archived memories in their own tenant over MCP.
+features:
+  mcp_vault_rehydrate: false
+
 # Consolidation moves rarely used memories from the active set into the vault
 # (still exportable, no longer searched). promote_live: false is a dry run that
 # only logs what it would move; switch it on once the logs look right to you.
