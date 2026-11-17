@@ -307,6 +307,7 @@ func loadConfig(path string) (*Config, error) {
 // both directions.
 var consumedFeatures = map[string]bool{
 	"cross_agent_visibility": true,
+	mcpVaultRehydrateFeature: true,
 }
 
 // unconsumedFeatures returns the configured flags that no code reads.

@@ -271,10 +271,17 @@ other agents have contributed to this tenant's memory.
 
 Vector count, byte estimate, oldest/newest item timestamps for this tenant.
 
+### ` + "`POST /promote`" + ` (MCP: ` + "`heurchain_promote`" + `)
+
+Conditionally archives one active memory if its activation is below the configured
+threshold. It is not a retrieval boost: archived memories are not returned by active
+search or query. Use this only to explicitly archive a memory, not to confirm a fact.
+The explicit single-memory operation is not subject to the consolidation dry-run setting.
+
 ### ` + "`POST /vault/flush-working-memory`" + `
 
-Deletes items tagged ` + "`conversation`" + ` (or a custom tag set you specify). Use at
-session end to prune conversational chaff before it pollutes future retrieval.
+Runs the configured consolidation policy across the tenant's active memories. It is
+not a tag-based delete. It respects consolidation dry-run and is not needed to persist writes.
 
 ### ` + "`GET /vault/export`" + `
 
@@ -289,6 +296,9 @@ migration.
 Admin-only recovery of one vaulted document. Send a JSON body with a ` + "`doc_id`" + ` field; the
 broker restores Redis, BM25, and Qdrant from the preserved embedding and
 returns ` + "`duration_ms`" + `. A newer active record returns ` + "`409 Conflict`" + `.
+
+Operators can separately opt in to an MCP restore tool for tenant API keys. It is
+unavailable by default; check the server's MCP tool list. The HTTP route remains admin-only.
 
 ---
 
@@ -371,8 +381,6 @@ All error responses are JSON: ` + "`{ \"error\": \"description\" }`" + `.
 - If the HeurChain MCP server is configured, prefer MCP tools
   (` + "`mcp__heurchain__heurchain_search`" + `, ` + "`mcp__heurchain__heurchain_export`" + `).
   Fall back to direct HTTP if MCP is unavailable.
-- ` + "`POST /promote`" + ` — increments a memory item's retrieval weight. Call after a
-  human confirms a stored fact is correct.
 
 ---
 
@@ -553,7 +561,7 @@ var discoveryJSON = discoverySpec{
 		{
 			Path:         "/vault/flush-working-memory",
 			Method:       "POST",
-			Summary:      "Delete items tagged 'conversation' (or a custom tag set). Use at session end to prune chaff.",
+			Summary:      "Run the tenant consolidation policy to archive eligible active memories; respects consolidation dry-run.",
 			AuthRequired: true,
 		},
 		{
@@ -565,13 +573,13 @@ var discoveryJSON = discoverySpec{
 		{
 			Path:         "/admin/vault/rehydrate",
 			Method:       "POST",
-			Summary:      "Restore one vaulted document to active Redis, BM25, and Qdrant projections; reports duration_ms and preserves the vault copy on failure.",
+			Summary:      "Admin only: restore one vaulted document to active Redis, BM25, and Qdrant projections; reports duration_ms and preserves the vault copy on failure.",
 			AuthRequired: true,
 		},
 		{
 			Path:         "/promote",
 			Method:       "POST",
-			Summary:      "Increment a memory item's retrieval weight. Call after a human confirms a stored fact is correct.",
+			Summary:      "Conditionally archive one active memory below the configured activation threshold. Does not boost retrieval.",
 			AuthRequired: true,
 		},
 		{

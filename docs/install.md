@@ -71,6 +71,27 @@ claude mcp add --transport http heurchain http://127.0.0.1:8080/mcp/sse \
 Restarting the broker drops legacy SSE sessions (they live in memory); Streamable HTTP
 clients are unaffected.
 
+### Opt in to restoring archived memories over MCP
+
+By default, restoring a vaulted memory requires the admin-only HTTP endpoint
+`POST /admin/vault/rehydrate`. To let MCP clients restore a memory by `doc_id`, set
+this in the broker configuration and restart the broker:
+
+```yaml
+features:
+  mcp_vault_rehydrate: true
+```
+
+Enable this only if every tenant API key holder on this broker may reactivate archived
+memories within their own tenant. When enabled, authenticated MCP clients see
+`heurchain_vault_rehydrate` in `tools/list`. The tool does not accept a tenant ID or
+admin credentials; it restores to the active set of the authenticated tenant only.
+Leaving the option omitted or `false` keeps the tool unavailable. The HTTP endpoint
+remains admin-only either way.
+
+The similarly named `heurchain_promote` does the opposite: it conditionally archives
+an active memory. It does not boost retrieval or confirm that a fact is correct.
+
 ## Exposing it beyond localhost
 
 Compose publishes the broker on `127.0.0.1:8080` only. To reach it from other machines,

@@ -250,10 +250,17 @@ other agents have contributed to this tenant's memory.
 
 Vector count, byte estimate, oldest/newest item timestamps for this tenant.
 
+### `POST /promote` (MCP: `heurchain_promote`)
+
+Conditionally archives one active memory if its activation is below the configured
+threshold. It is not a retrieval boost: archived memories are not returned by active
+search or query. Use this only to explicitly archive a memory, not to confirm a fact.
+The explicit single-memory operation is not subject to the consolidation dry-run setting.
+
 ### `POST /vault/flush-working-memory`
 
-Deletes items tagged `conversation` (or a custom tag set you specify). Use at
-session end to prune conversational chaff before it pollutes future retrieval.
+Runs the configured consolidation policy across the tenant's active memories. It is
+not a tag-based delete. It respects consolidation dry-run and is not needed to persist writes.
 
 ### `GET /vault/export`
 
@@ -268,6 +275,14 @@ migration.
 Admin-only recovery of one vaulted document. Send a JSON body with a `doc_id` field; the
 broker restores Redis, BM25, and Qdrant from the preserved embedding and
 returns `duration_ms`. A newer active record returns `409 Conflict`.
+
+### `heurchain_vault_rehydrate` (opt-in MCP tool)
+
+Restore one archived memory to active retrieval by passing its `doc_id`. The tool
+appears in `tools/list` only when the operator enables `features.mcp_vault_rehydrate`.
+It uses your authenticated tenant and takes no tenant ID or admin credentials. Use
+exact memory inspection first if you only need to read an archived memory. If the tool
+is unavailable, ask the operator to restore the memory using the admin endpoint.
 
 ---
 
@@ -350,8 +365,6 @@ All error responses are JSON: `{ "error": "description" }`.
 - If the HeurChain MCP server is configured, prefer MCP tools
   (`mcp__heurchain__heurchain_search`, `mcp__heurchain__heurchain_export`).
   Fall back to direct HTTP if MCP is unavailable.
-- `POST /promote` — increments a memory item's retrieval weight. Call after a
-  human confirms a stored fact is correct.
 
 ---
 

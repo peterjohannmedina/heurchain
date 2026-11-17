@@ -297,7 +297,7 @@ func (s *Server) dispatchMCP(ctx context.Context, sess *mcpSession, req *rpcReq)
 		})
 
 	case "tools/list":
-		return rpcOK(req.ID, map[string]interface{}{"tools": mcpToolList})
+		return rpcOK(req.ID, map[string]interface{}{"tools": s.availableMCPTools()})
 
 	case "tools/call":
 		var p struct {
@@ -457,6 +457,12 @@ func (s *Server) invokeMCPTool(ctx context.Context, sess *mcpSession, tool strin
 	case "heurchain_vault_stats":
 		return get("/vault/stats", s.handleVaultStats)
 
+	case mcpVaultRehydrateName:
+		if !s.config.Features[mcpVaultRehydrateFeature] {
+			return nil, fmt.Errorf("unknown tool: %s", tool)
+		}
+		return call("POST", "/mcp/vault/rehydrate", args, s.handleMCPVaultRehydrate)
+
 	case "heurchain_vault_flush":
 		// handleVaultFlush reads tenant_id from the JSON body; inject the session tenant.
 		body, _ := json.Marshal(map[string]string{"tenant_id": sess.tenantID})
@@ -549,7 +555,7 @@ var mcpToolList = []map[string]interface{}{
 	},
 	{
 		"name":        "heurchain_promote",
-		"description": "Increment a memory item's retrieval weight. Call after a human confirms a stored fact is correct.",
+		"description": "Conditionally archive one active memory below the activation threshold. An archived item leaves active retrieval. This is not a retrieval boost; use only when archiving is intended.",
 		"inputSchema": map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{"id": map[string]interface{}{"type": "string", "description": "Vector ID to promote."}},
@@ -633,7 +639,7 @@ var mcpToolList = []map[string]interface{}{
 	},
 	{
 		"name":        "heurchain_vault_flush",
-		"description": "Flush working memory: consolidate hot vectors into the durable vault for this tenant. Call at the end of a long session to persist accumulated memories.",
+		"description": "Run the tenant consolidation policy to archive eligible active memories. Respects consolidation dry-run; not required to persist writes.",
 		"inputSchema": map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 	},
 	{

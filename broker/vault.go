@@ -633,6 +633,7 @@ const maxVaultImportBytes = 1 << 30 // 1 GiB cap on the uploaded archive
 const maxVaultEntryBytes = 64 << 20 // 64 MiB per entry
 
 var errVaultRehydrateConflict = errors.New("active document differs from vaulted document")
+var errVaultDocumentNotFound = errors.New("vault document not found")
 
 // isBodyTooLarge reports whether a read from a MaxBytesReader-capped body failed
 // because the upload exceeded the limit. Such a request was well-formed but too
@@ -709,7 +710,7 @@ func rehydrateVaultDocWithAfterProjection(
 		return fmt.Errorf("read vault record: %w", err)
 	}
 	if len(data) == 0 {
-		return fmt.Errorf("vault document not found")
+		return errVaultDocumentNotFound
 	}
 
 	var embedding []float32
@@ -878,24 +879,39 @@ func (s *Server) handleVaultRehydrate(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "missing or invalid doc_id", http.StatusBadRequest)
 		return
 	}
+	s.finishVaultRehydrate(w, r, tenantID, req.DocID, "admin")
+}
+
+// Both callers have already authenticated and validated the document ID.
+func (s *Server) finishVaultRehydrate(w http.ResponseWriter, r *http.Request, tenantID, docID, actor string) {
 	started := time.Now()
-	if err := rehydrateVaultDoc(r.Context(), s.rdb, tenantID, req.DocID); err != nil {
+	if err := rehydrateVaultDoc(r.Context(), s.rdb, tenantID, docID); err != nil {
 		consolidationMetrics.rehydrationFailures.Add(1)
-		s.auditAction(r, tenantID, "admin", "vault.rehydrate", req.DocID, false, err.Error())
-		if errors.Is(err, errVaultRehydrateConflict) {
+		s.auditAction(r, tenantID, actor, "vault.rehydrate", docID, false, err.Error())
+		conflict := errors.Is(err, errVaultRehydrateConflict)
+		if conflict {
 			consolidationMetrics.rehydrationConflicts.Add(1)
+		}
+		switch {
+		case actor == "admin" && conflict:
 			jsonError(w, err.Error(), http.StatusConflict)
-		} else {
+		case actor == "admin": // Preserve the operator HTTP endpoint's diagnostics.
 			jsonError(w, "rehydrate failed: "+err.Error(), http.StatusInternalServerError)
+		case errors.Is(err, errVaultDocumentNotFound):
+			jsonError(w, "archived memory not found", http.StatusNotFound)
+		case conflict:
+			jsonError(w, "conflicting active memory", http.StatusConflict)
+		default:
+			memoryError(w, err)
 		}
 		return
 	}
 	durationMS := time.Since(started).Milliseconds()
 	consolidationMetrics.rehydrations.Add(1)
 	consolidationMetrics.rehydrationDurationMS.Add(uint64(durationMS))
-	log.Printf("vault rehydrate tenant=%s doc=%s duration_ms=%d", tenantID, req.DocID, durationMS)
-	s.auditAction(r, tenantID, "admin", "vault.rehydrate", req.DocID, true, "")
-	respondJSON(w, map[string]interface{}{"rehydrated": true, "doc_id": req.DocID, "duration_ms": durationMS})
+	log.Printf("vault rehydrate tenant=%s doc=%s duration_ms=%d", tenantID, docID, durationMS)
+	s.auditAction(r, tenantID, actor, "vault.rehydrate", docID, true, "")
+	respondJSON(w, map[string]interface{}{"rehydrated": true, "doc_id": docID, "duration_ms": durationMS})
 }
 
 func (s *Server) handleVaultImport(w http.ResponseWriter, r *http.Request) {
