@@ -24,6 +24,8 @@ unit for native installs, and the docs. No accounts, billing or cloud services a
 
 | You want to | Use |
 |---|---|
+| Connect an MCP client | [MCP connection guide and registry descriptor](mcp/README.md): choose the hosted service **or** your self-hosted broker. |
+| Teach an agent to use a connected HeurChain store | [HeurChain memory skill](skills/heurchain-memory/SKILL.md). This is an optional instruction file, not an MCP server or installer. |
 | **Run HeurChain** (the memory server) | **This repository**: `git clone`, then `docker compose up` ([quick start](#quick-start)) |
 | Point an agent at a running broker | The [`heurchain` npm package](https://www.npmjs.com/package/heurchain): `AGENT_CONFIG.json` and the onboarding guide. It contains no server. |
 | The old 1.x Node.js server | Deprecated. Still installable as `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x). |
