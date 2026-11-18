@@ -574,14 +574,14 @@ var mcpToolList = []map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"agent_id":    map[string]interface{}{"type": "string", "description": "Your agent identifier."},
-				"ttl_seconds": map[string]interface{}{"type": "number", "description": "Session TTL (default 86400 = 24 h)."},
+				"ttl_seconds": map[string]interface{}{"type": "integer", "default": defaultSessionTTLSeconds, "description": "Session TTL in seconds. Linked writes refresh the TTL."},
 			},
 			"required": []string{"agent_id"},
 		},
 	},
 	{
 		"name":        "heurchain_session_end",
-		"description": "Close a session. Call at conversation end, then store a session summary tagged 'conversation'.",
+		"description": "End a session and discard its replay context. Store any summary first. Stored memories remain available.",
 		"inputSchema": map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{"session_id": map[string]interface{}{"type": "string"}},
@@ -590,7 +590,7 @@ var mcpToolList = []map[string]interface{}{
 	},
 	{
 		"name":        "heurchain_session_context",
-		"description": "Replay a prior session: returns items written under that session_id, ordered by recency. Use to resume a conversation without re-querying the user.",
+		"description": "Return recent memory text from an active session, newest first.",
 		"inputSchema": map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -602,7 +602,7 @@ var mcpToolList = []map[string]interface{}{
 	},
 	{
 		"name":        "heurchain_agent_recall",
-		"description": "List session IDs for an agent. Use at session start to discover prior sessions, then call session_context on each.",
+		"description": "List active session IDs for an agent. Use session_context to read a listed session.",
 		"inputSchema": map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{"agent_id": map[string]interface{}{"type": "string"}},
@@ -639,7 +639,7 @@ var mcpToolList = []map[string]interface{}{
 	},
 	{
 		"name":        "heurchain_vault_flush",
-		"description": "Run the tenant consolidation policy to archive eligible active memories. Respects consolidation dry-run; not required to persist writes.",
+		"description": "Run one tenant consolidation pass. Flushed means the pass completed. Promoted counts archived memories and is zero in dry-run mode.",
 		"inputSchema": map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 	},
 	{

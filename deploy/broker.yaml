@@ -17,9 +17,6 @@ redis:
 sqlite:
   path: "/var/lib/heurchain/broker.db"
 
-vault:
-  path: "/var/lib/heurchain/vault"
-
 auth:
   api_key_header: "X-HeurChain-API-Key"
   tenant_header: "X-HeurChain-Tenant"

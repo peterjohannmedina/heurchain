@@ -99,7 +99,9 @@ you. Follow the session protocol in AGENT_CONFIG.json.
    `metadata.session_id` on every store.
 3. `GET /agent/{agent_id}`: recall your recent memories.
 4. During work: `POST /search` before asking, `POST /store` for facts and decisions.
-5. At the end: `POST /session/end`, then store a concise summary.
+5. At the end, store a concise summary tagged `conversation` with your session ID.
+   Leave the session open for replay until it expires. Use `POST /session/end`
+   to discard its replay context immediately.
 
 ## What's in this package
 

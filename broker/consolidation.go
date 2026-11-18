@@ -32,7 +32,7 @@ type ConsolidationConfig struct {
 	// DemoteFraction > 0 switches consolidation to a relative cut (demote the
 	// lowest-activation N of each tenant's corpus) instead of comparing A_i to
 	// PromotionThreshold. 0 keeps the legacy absolute-threshold behaviour.
-	// See demote.go and docs/architecture/archive-vs-working-set.md 5a.
+	// See demote.go for the rank-based selector.
 	DemoteFraction float64
 
 	// DemoteFloor caps documents demoted per sweep when DemoteFraction > 0.

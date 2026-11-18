@@ -30,6 +30,8 @@ type Config struct {
 		Path string `yaml:"path"`
 	} `yaml:"sqlite"`
 
+	// Vault accepts the legacy path key for existing configurations. Archived
+	// records live in Redis.
 	Vault struct {
 		Path string `yaml:"path"`
 	} `yaml:"vault"`
@@ -95,7 +97,6 @@ type Config struct {
 		// falling forever. Every (rate, threshold) pair therefore converges on
 		// vaulting that whole 64%, just at different speeds. A relative cut is
 		// scale- and age-invariant by construction.
-		// See docs/architecture/archive-vs-working-set.md 4.4 and 5a.
 		//
 		// 0 (the default) keeps the legacy absolute-threshold behaviour.
 		DemoteFraction float64 `yaml:"demote_fraction"`
@@ -197,9 +198,6 @@ func loadConfig(path string) (*Config, error) {
 	}
 	if cfg.SQLite.Path == "" {
 		cfg.SQLite.Path = "/var/lib/heurchain/broker.db"
-	}
-	if cfg.Vault.Path == "" {
-		cfg.Vault.Path = "/opt/vault"
 	}
 	if cfg.Auth.APIKeyHeader == "" {
 		cfg.Auth.APIKeyHeader = "X-HeurChain-API-Key"

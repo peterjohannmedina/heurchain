@@ -1,6 +1,14 @@
 package main
 
-import "testing"
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"slices"
+	"strings"
+	"testing"
+)
 
 func TestVisibleToRequester(t *testing.T) {
 	iso := map[string]bool{"alpha": true} // alpha's corpus is isolated
@@ -30,13 +38,14 @@ func TestVisibleToRequester(t *testing.T) {
 }
 
 func TestAuthorFieldLegacyFallback(t *testing.T) {
-	// A doc with created_by set uses it; a doc with only legacy agent_id (no
-	// created_by) is treated as legacy (author "") => visible to all.
-	if got := authorField(map[string]string{"created_by": "alpha", "agent_id": "alpha"}); got != "alpha" {
+	if got := authorField(map[string]string{"created_by": "alpha", "agent_id": "beta"}); got != "alpha" {
 		t.Errorf("created_by should win, got %q", got)
 	}
-	if got := authorField(map[string]string{"agent_id": "alpha"}); got != "" {
-		t.Errorf("no created_by => legacy (empty author), got %q", got)
+	if got := authorField(map[string]string{"agent_id": "alpha"}); got != "alpha" {
+		t.Errorf("agent_id should supply the author, got %q", got)
+	}
+	if got := authorField(nil); got != "" {
+		t.Errorf("authorless record should have an empty author, got %q", got)
 	}
 }
 
@@ -71,19 +80,48 @@ func TestCrossAgentEnabledDefaultsOff(t *testing.T) {
 	}
 }
 
-// With the flag off, visibility must not be consulted at all: the legacy
-// exact-author match is the only filter. This pins the "flag off is
-// byte-identical to today" guarantee the port depends on.
-func TestIsolationInertWhenFlagOff(t *testing.T) {
-	// visibleToRequester is only reached when crossAgent is true; when the flag
-	// is off searchVecs compares data["agent_id"] directly. Assert the helper
-	// would have hidden the doc, proving the flag is what gates the behaviour.
-	iso := map[string]bool{"alpha": true}
-	if visibleToRequester("beta", "alpha", "private", "", iso) {
-		t.Fatal("precondition: isolated author should be hidden when the filter runs")
+func TestQueryUsesStoredAgentForVisibility(t *testing.T) {
+	f := newRecallFixture(t)
+	f.store(t, "alpha-memory", "from alpha", "alpha", []string{"fact"}, 1)
+	f.store(t, "beta-memory", "from beta", "beta", []string{"note"}, 1)
+	f.store(t, "anonymous", "no author", "", []string{"fact"}, 1)
+	f.store(t, "excluded", "unmatched tag", "beta", []string{"other"}, 1)
+
+	call := func(method, path, body string, handler http.HandlerFunc) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("X-HeurChain-API-Key", "test-key")
+		req.Header.Set("X-HeurChain-Tenant", "t1")
+		w := httptest.NewRecorder()
+		handler(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s %s: %d %s", method, path, w.Code, w.Body.String())
+		}
+		return w
 	}
-	// ...and that a nil isolation set (what the flag-off path passes) hides nothing.
-	if !visibleToRequester("beta", "alpha", "private", "", nil) {
-		t.Error("with no isolated agents loaded, the cooperative default must be visible")
+	checkQuery := func(agent string, want ...string) {
+		t.Helper()
+		body := fmt.Sprintf(`{"embedding":[1,1],"agent_id":%q,"tags":["fact","note"]}`, agent)
+		w := call(http.MethodPost, "/query", body, f.s.handleQuery)
+		var reply struct{ Results []searchResult }
+		if err := json.Unmarshal(w.Body.Bytes(), &reply); err != nil {
+			t.Fatal(err)
+		}
+		ids := make([]string, 0, len(reply.Results))
+		for _, result := range reply.Results {
+			ids = append(ids, result.ID)
+		}
+		slices.Sort(ids)
+		if !slices.Equal(ids, want) {
+			t.Fatalf("query as %q returned %v, want %v", agent, ids, want)
+		}
 	}
+
+	checkQuery("beta", "beta-memory")
+	f.s.config.Features = map[string]bool{"cross_agent_visibility": true}
+	checkQuery("beta", "alpha-memory", "anonymous", "beta-memory")
+	call(http.MethodPut, "/agent-settings", `{"agent_id":"alpha","isolated":true}`, f.s.handleAgentSettings)
+	checkQuery("beta", "anonymous", "beta-memory")
+	checkQuery("alpha", "alpha-memory", "anonymous", "beta-memory")
+	checkQuery("", "alpha-memory", "anonymous", "beta-memory")
 }

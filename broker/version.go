@@ -29,5 +29,6 @@ const brokerEdition = "oss"
 // a destructive or backward-incompatible migration must set this to
 // "forward-only" and use a migration-specific manual release plan.
 // Older binaries do not honor lifecycle tombstones or immutable checkpoints.
-// See docs/memory-lifecycle.md for the separate release/rollback prerequisite.
+// Take a backup before upgrading (see docs/install.md) and verify data
+// compatibility before restoring an older binary.
 const brokerRollbackPolicy = "forward-only"

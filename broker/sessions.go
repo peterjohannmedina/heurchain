@@ -40,15 +40,11 @@ func agentSessSetKey(tenantID, agentID string) string {
 // Session lifecycle
 // ---------------------------------------------------------------------------
 
-// sessionBinding carries the creating key id (sessions are only usable by the
-// key that created them).
-type sessionBinding struct {
-	KeyID int64
-}
+const defaultSessionTTLSeconds = 3600
 
-func startSession(ctx context.Context, rdb *redis.Client, tenantID, agentID string, ttlSeconds int, bind *sessionBinding) (string, error) {
+func startSession(ctx context.Context, rdb *redis.Client, tenantID, agentID string, ttlSeconds int) (string, error) {
 	if ttlSeconds <= 0 {
-		ttlSeconds = 3600
+		ttlSeconds = defaultSessionTTLSeconds
 	}
 
 	sessionID := uuid.New().String()
@@ -58,21 +54,14 @@ func startSession(ctx context.Context, rdb *redis.Client, tenantID, agentID stri
 	agentSetKey := agentSessSetKey(tenantID, agentID)
 	ttl := time.Duration(ttlSeconds) * time.Second
 
-	pipe := rdb.Pipeline()
+	pipe := rdb.TxPipeline()
 	pipe.HSet(ctx, metaKey, "agent_id", agentID, "created_at", now, "last_seen", now, "ttl_s", ttlSeconds)
-	if bind != nil {
-		pipe.HSet(ctx, metaKey, "key_id", fmt.Sprintf("%d", bind.KeyID))
-	}
 	pipe.SAdd(ctx, agentSetKey, sessionID)
-	// Enforce session TTL so abandoned sessions expire instead of leaking Redis memory.
-	// The agent set is given a generous floor so it outlives its member sessions.
 	pipe.Expire(ctx, metaKey, ttl)
-	if agentSetTTL := ttl; agentSetTTL < 24*time.Hour {
-		agentSetTTL = 24 * time.Hour
-		pipe.Expire(ctx, agentSetKey, agentSetTTL)
-	} else {
-		pipe.Expire(ctx, agentSetKey, agentSetTTL)
-	}
+	// Adding a short session must not shorten the life of the agent index.
+	agentSetTTL := max(ttl, 24*time.Hour)
+	pipe.ExpireNX(ctx, agentSetKey, agentSetTTL)
+	pipe.ExpireGT(ctx, agentSetKey, agentSetTTL)
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		return "", err
@@ -94,7 +83,7 @@ func endSession(ctx context.Context, rdb *redis.Client, tenantID, sessionID stri
 	agentSetKey := agentSessSetKey(tenantID, agentID)
 	ctxKey := sessCtxKey(tenantID, sessionID)
 
-	pipe := rdb.Pipeline()
+	pipe := rdb.TxPipeline()
 	pipe.SRem(ctx, agentSetKey, sessionID)
 	pipe.Del(ctx, metaKey, ctxKey, sessMemoryCtxKey(tenantID, sessionID))
 	_, err = pipe.Exec(ctx)
@@ -113,18 +102,24 @@ func appendMemoryContext(ctx context.Context, rdb *redis.Client, tenantID, sessi
 	// expiry are atomic so an expired session cannot be recreated by a store.
 	const script = `
 if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end
-local ttl = tonumber(redis.call('HGET', KEYS[1], 'ttl_s') or '3600')
-if not ttl or ttl <= 0 then ttl = 3600 end
+local ttl = tonumber(redis.call('HGET', KEYS[1], 'ttl_s'))
+if not ttl or ttl <= 0 then ttl = tonumber(ARGV[3]) end
 redis.call('LREM', KEYS[2], 0, ARGV[1])
 redis.call('LPUSH', KEYS[2], ARGV[1])
 redis.call('LTRIM', KEYS[2], 0, 49)
 redis.call('HSET', KEYS[1], 'last_seen', ARGV[2])
 redis.call('EXPIRE', KEYS[1], ttl)
 redis.call('EXPIRE', KEYS[2], ttl)
+local agent = redis.call('HGET', KEYS[1], 'agent_id')
+if agent then
+  local sessions = ARGV[4] .. agent .. ':sessions'
+  redis.call('SADD', sessions, ARGV[5])
+  if redis.call('TTL', sessions) < ttl then redis.call('EXPIRE', sessions, ttl) end
+end
 return 1`
 	return redis.NewScript(script).Run(ctx, rdb,
 		[]string{sessMetaKey(tenantID, sessionID), sessMemoryCtxKey(tenantID, sessionID)},
-		id, time.Now().UTC().Format(time.RFC3339)).Err()
+		id, time.Now().UTC().Format(time.RFC3339), defaultSessionTTLSeconds, "tenant:"+tenantID+":agent:", sessionID).Err()
 }
 
 func getContext(ctx context.Context, rdb *redis.Client, tenantID, sessionID string, n int) ([]string, error) {
@@ -164,7 +159,33 @@ return redis.call('LRANGE', KEYS[2], 0, 49)`
 
 func agentSessions(ctx context.Context, rdb *redis.Client, tenantID, agentID string) ([]string, error) {
 	agentSetKey := agentSessSetKey(tenantID, agentID)
-	return rdb.SMembers(ctx, agentSetKey).Result()
+	ids, err := rdb.SMembers(ctx, agentSetKey).Result()
+	if err != nil || len(ids) == 0 {
+		return ids, err
+	}
+	pipe := rdb.Pipeline()
+	exists := make([]*redis.IntCmd, len(ids))
+	for i, id := range ids {
+		exists[i] = pipe.Exists(ctx, sessMetaKey(tenantID, id))
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+	active := make([]string, 0, len(ids))
+	var expired []interface{}
+	for i, id := range ids {
+		if exists[i].Val() == 0 {
+			expired = append(expired, id)
+		} else {
+			active = append(active, id)
+		}
+	}
+	if len(expired) > 0 {
+		if err := rdb.SRem(ctx, agentSetKey, expired...).Err(); err != nil {
+			return nil, err
+		}
+	}
+	return active, nil
 }
 
 type agentMemoryItem struct {
@@ -259,8 +280,7 @@ func (s *Server) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	keyID, err := validateAPIKey(ctx, s.rdb, s.db, tenantID, apiKey)
-	if err != nil {
+	if _, err := validateAPIKey(ctx, s.rdb, s.db, tenantID, apiKey); err != nil {
 		jsonError(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -275,8 +295,7 @@ func (s *Server) handleSessionStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	bind := &sessionBinding{KeyID: keyID}
-	sessionID, err := startSession(ctx, s.rdb, tenantID, req.AgentID, req.TTLSeconds, bind)
+	sessionID, err := startSession(ctx, s.rdb, tenantID, req.AgentID, req.TTLSeconds)
 	if err != nil {
 		log.Printf("session start error tenant=%s: %v", tenantID, err)
 		jsonError(w, "session start failed", http.StatusInternalServerError)
