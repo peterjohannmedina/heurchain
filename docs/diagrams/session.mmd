@@ -14,6 +14,9 @@ sequenceDiagram
         A->>B: POST /store {text, tags, metadata.session_id}
         B-->>A: id, indexed
     end
-    A->>B: POST /session/end {session_id}
-    A->>B: POST /store {session summary}
+    A->>B: POST /store {summary, metadata.session_id}
+    Note over A,B: Leave the session open for replay until it expires.
+    opt Discard replay context now
+        A->>B: POST /session/end {session_id}
+    end
     Note over A,B: The next session, or another agent,<br/>starts again from the manifest and recall.

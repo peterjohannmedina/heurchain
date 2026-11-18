@@ -53,7 +53,7 @@
       },
       {
         "step": 3,
-        "action": "GET /agent/{agent_id} (MCP: heurchain_agent_recall)",
+        "action": "GET /agent/{agent_id}",
         "why": "Recall your own recent memories."
       }
     ],
@@ -65,11 +65,11 @@
     "shutdown_sequence": [
       {
         "step": 1,
-        "action": "POST /session/end {session_id} (MCP: heurchain_session_end)"
+        "action": "Store a concise session summary with POST /store, tagged conversation, with metadata.session_id."
       },
       {
         "step": 2,
-        "action": "Store a concise session summary with POST /store"
+        "action": "Leave the session open for replay until its TTL elapses. To discard replay context immediately, call POST /session/end {session_id} (MCP: heurchain_session_end). The stored summary remains available through normal memory retrieval."
       }
     ]
   },
@@ -81,7 +81,7 @@
   },
   "store_result": {
     "200_indexed_true": "Stored and indexed.",
-    "202_indexed_false": "Stored durably but indexing is incomplete (embedder or Qdrant unavailable). Retry with the same id; there is no background retry queue."
+    "202_indexed_false": "Stored durably with indexing incomplete. The background worker retries dense indexing. Use the same id for any manual retry."
   },
   "tips": [
     "Put absolute dates in stored text (e.g. '2026-11-01: ...'); relative phrases like 'last Saturday' cannot be resolved later.",
@@ -150,15 +150,15 @@
       "auth": "tenant API key"
     },
     "POST /session/end": {
-      "summary": "End an agent session",
+      "summary": "End an agent session and discard its replay context. Stored memories remain available.",
       "auth": "tenant API key"
     },
     "POST /session/start": {
-      "summary": "Start an agent session",
+      "summary": "Start an agent session. TTL defaults to 3600 seconds (1 hour) and refreshes on linked writes.",
       "auth": "tenant API key"
     },
     "GET /session/{session_id}/context": {
-      "summary": "Get recent session context",
+      "summary": "Get recent memory text from an active session",
       "auth": "tenant API key"
     },
     "POST /store": {
@@ -172,15 +172,15 @@
     "heurchain_query": "Semantic similarity search. Best for natural-language retrieval ('what did I decide about authentication?').",
     "heurchain_promote": "Conditionally archive an active memory below the activation threshold, removing it from active retrieval. This is not a retrieval boost or fact confirmation.",
     "heurchain_manifest": "Get a memory summary: total count, per-tag counts, per-agent counts, 10 most-recent items. Call at task start before asking for things already stored.",
-    "heurchain_session_start": "Open a session to correlate all store calls in this conversation. Returns a session_id — pass it in metadata.session_id on every store call.",
-    "heurchain_session_end": "Close a session. Call at conversation end, then store a session summary tagged 'conversation'.",
-    "heurchain_session_context": "Replay a prior session: returns items written under that session_id, ordered by recency. Use to resume a conversation without re-querying the user.",
-    "heurchain_agent_recall": "List session IDs for an agent. Use at session start to discover prior sessions, then call session_context on each.",
+    "heurchain_session_start": "Open a session with a default TTL of 3600 seconds (1 hour). Pass the returned session_id in metadata.session_id on each store to link the memory and refresh the TTL.",
+    "heurchain_session_end": "End a session and discard its replay context. Store any summary first. Stored memories remain available.",
+    "heurchain_session_context": "Return recent memory text from an active session, newest first.",
+    "heurchain_agent_recall": "List active session IDs for an agent. Use session_context to read a listed session.",
     "heurchain_memory_history": "Audit trail for a single memory item: the rows in this tenant's audit log whose resource is this id, newest first, capped at the 100 most recent. In practice these are store and lifecycle events (the writes that stamped resource=<id>), not reads — a query that happened to retrieve this item is not recorded against it, so an empty result does not mean the item was never retrieved.",
     "heurchain_embed": "Embed text into a dense vector using the server's active embedding model. Use to pre-compute an embedding for query, or to inspect dimensionality.",
     "heurchain_agents": "List agent_ids active in this tenant over the last 7 days, with last-seen time and event counts. Use to discover which agents have been writing memory.",
     "heurchain_vault_stats": "Storage stats for this tenant: vector count, total bytes, size in MB, estimated token count.",
-    "heurchain_vault_flush": "Run the tenant consolidation policy to archive eligible active memories. Respects consolidation dry-run; not required to persist writes.",
+    "heurchain_vault_flush": "Run one tenant consolidation pass. Flushed means the pass completed. Promoted counts archived memories and is zero in dry-run mode.",
     "heurchain_vault_rehydrate": "Restore one archived memory by doc_id within the authenticated tenant. Available in tools/list only when the operator enables features.mcp_vault_rehydrate. The HTTP restore route remains admin-only.",
     "heurchain_vault_export": "Export this tenant's stored memories as a zip archive of human-readable Markdown files (embeddings excluded). Use for backup or audit.",
     "heurchain_cache_set": "Store a short-lived key-value pair in the tenant cache (Redis, TTL-backed). For ephemeral state: current session_id, active model, in-progress task ID.",

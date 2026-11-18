@@ -117,13 +117,23 @@ memory.example.com {
 6. Create a `heurchain` system user, install `deploy/systemd/heurchain-broker.service`, then
    `systemctl enable --now heurchain-broker`.
 
+## Cooperative agent visibility
+
+Set `features.cross_agent_visibility: true` in the broker configuration to enable
+per-agent isolation for `POST /query`. With the flag enabled, `agent_id` identifies
+the requesting agent. Use `PUT /agent-settings` with the author agent's ID and
+`isolated: true` to hide that author's memories from other requesting agents.
+Queries without an agent ID retain the tenant-wide view. Agent IDs are
+self-declared, so this feature organizes memories among cooperating agents.
+
 ## Backups
 
-Back up all three stores together, while the broker is stopped or quiesced:
+Stop or quiesce the broker before taking backups so the stores reflect the same state.
 
-- Redis: the AOF/RDB files in the `redis-data` volume (or `/var/lib/redis`).
-- SQLite: `sqlite3 /var/lib/heurchain/broker.db ".backup broker-backup.db"`.
-- Vault: the `/var/lib/heurchain/vault` directory.
+- Back up the Redis AOF/RDB files in the `redis-data` volume (or `/var/lib/redis`).
+  Redis holds active and archived memories, including vault records. The legacy
+  `vault.path` setting is accepted for compatibility and has no effect.
+- Back up SQLite with `sqlite3 /var/lib/heurchain/broker.db ".backup broker-backup.db"`.
 
 Qdrant vectors can be rebuilt from Redis by re-embedding, but backing up the `qdrant-data`
 volume avoids that cost.

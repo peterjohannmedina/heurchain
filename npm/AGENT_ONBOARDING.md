@@ -35,8 +35,9 @@ Run these steps in order at the start of every new session:
    and pass it in `metadata.session_id` on every `/store` call this conversation.
 4. **`GET /agent/{your_agent_id}`** — recall your agent's own recent memories.
    Review before starting work.
-5. **At session end:** call `POST /session/end`, then write a session summary
-   (see _What to store and when_ below).
+5. **At conversation end:** store a concise summary tagged `conversation`
+   with `metadata.session_id`. Leave the session open until it expires if you
+   want to replay its context.
 
 ---
 
@@ -114,8 +115,10 @@ Response `200`:
 }
 ```
 
-- `agent_id` — optional; filters to that agent's writes only
-- `tags` — optional; AND semantics (all tags must match)
+- `agent_id` — optional. By default, matches that agent's writes. With
+  `features.cross_agent_visibility` enabled, it identifies the requesting agent
+  for cooperative visibility.
+- `tags` — optional. A memory matches if it has any requested tag.
 - `top_k` — default 10, max 100
 - `threshold` — cosine similarity floor, default 0.0
 
@@ -153,8 +156,8 @@ degraded result, including an empty result; inspect bm25_status/dense_status.
 
 /store projects into both indexes. HTTP 200 with indexed=true
 confirms completed indexing. HTTP 202 with stored=true and indexed=false means
-the memory is durable but indexing is incomplete: retry the same document ID.
-There is no background retry queue.
+the memory is durable and the background worker will retry dense indexing.
+Use the same document ID if you retry the write yourself.
 
 ---
 
@@ -170,19 +173,20 @@ Response: `{ "embedding": [...768 floats...] }`. Use when you control storage yo
 
 ## Session lifecycle
 
-Sessions correlate writes across a conversation so you can replay the full
-context of any prior session later.
+Sessions group recent writes for replay until the session expires or is ended.
+Any authorized key in the tenant can use a session.
 
 ### `POST /session/start`
 
 ```json
-{ "agent_id": "kimi", "ttl_seconds": 86400 }
+{ "agent_id": "kimi", "ttl_seconds": 3600 }
 ```
 
 Response: `{ "session_id": "ses_..." }`
 
 Save `session_id` and pass it in `metadata.session_id` on every `/store` call
-this conversation. `ttl_seconds` defaults to 86400 (24 h) if omitted.
+this conversation. `ttl_seconds` defaults to 3600 (1 hour). A linked store
+refreshes the session TTL.
 
 ### `POST /session/end`
 
@@ -192,22 +196,25 @@ this conversation. `ttl_seconds` defaults to 86400 (24 h) if omitted.
 
 Response: `{ "ok": true }`
 
-Call at conversation end, then immediately store a session summary (see below).
+Use this when you want to discard replay context immediately. Store your summary
+first. Ending the session removes it from session recall and clears its context
+list. Stored memories, including the summary, remain available through normal
+memory retrieval.
 
 ### `GET /session/{session_id}/context?n=20`
 
-Returns up to 50 items written under that session, ordered by recency:
+Returns recent memory text from an active session in newest-first order.
+The default is 20 items and the maximum is 50.
 
 ```json
 {
-  "items": [
-    { "id": "...", "text": "...", "tags": [...], "created_at": "..." }
-  ]
+  "items": ["A recent memory from this session"]
 }
 ```
 
-Use this to resume a prior conversation: pass the previous session ID to
-re-hydrate context without re-querying the user.
+Use `GET /agent/{agent_id}/recall` or `heurchain_agent_recall` to find open
+session IDs. Use `GET /agent/{agent_id}` or `POST /search` to find stored summaries
+after a session ends or expires.
 
 ---
 
@@ -259,8 +266,9 @@ The explicit single-memory operation is not subject to the consolidation dry-run
 
 ### `POST /vault/flush-working-memory`
 
-Runs the configured consolidation policy across the tenant's active memories. It is
-not a tag-based delete. It respects consolidation dry-run and is not needed to persist writes.
+Runs one consolidation pass across the tenant's active memories. It respects the
+configured archive policy and dry-run setting. `flushed: true` reports a completed pass.
+`promoted` counts archived memories and is zero in dry-run mode.
 
 ### `GET /vault/export`
 
@@ -363,7 +371,7 @@ All error responses are JSON: `{ "error": "description" }`.
   path under tag `system-config`.
 - Each session start: call `GET /agent/openclaw` (or `/agent/hermes`) before any task.
 - If the HeurChain MCP server is configured, prefer MCP tools
-  (`mcp__heurchain__heurchain_search`, `mcp__heurchain__heurchain_export`).
+  (`mcp__heurchain__heurchain_search`, `mcp__heurchain__heurchain_vault_export`).
   Fall back to direct HTTP if MCP is unavailable.
 
 ---

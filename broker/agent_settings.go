@@ -108,7 +108,7 @@ func loadIsolatedAgents(ctx context.Context, rdb *redis.Client, tenantID string)
 }
 
 // visibleToRequester decides whether `requester` may see a memory authored by
-// `author` (its created_by), given the per-memory visibility and the set of
+// `author`, given the per-memory visibility and the set of
 // isolated agents. Cooperative + back-compat semantics:
 //   - legacy record (author == "")            -> visible to everyone
 //   - own record (requester == author)        -> visible
@@ -143,14 +143,13 @@ func visibleToRequester(requester, author, visibility, visibilityAgentsJSON stri
 	return !isolated[author]
 }
 
-// authorField extracts the authoring agent for visibility purposes: the Phase-7
-// created_by provenance, falling back to the legacy agent_id field (older docs
-// stamped agent_id but not created_by are still treated as legacy => visible).
+// authorField uses explicit provenance when present. Self-hosted writes and
+// older records identify the author with agent_id.
 func authorField(data map[string]string) string {
 	if cb := data["created_by"]; cb != "" {
 		return cb
 	}
-	return "" // no provenance => legacy => visible to all
+	return data["agent_id"]
 }
 
 // ---------------------------------------------------------------------------

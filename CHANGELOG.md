@@ -6,8 +6,14 @@ All notable changes to the self-hosted edition of HeurChain.
 
 Broker versions in this edition read `<mainline>-oss.<n>`: `0.6.1-oss.1` is cut from the
 mainline 0.6.1 broker, and `oss.<n>` counts changes made only in the self-hosted OSS edition.
-`GET /health` reports the version and `"edition": "oss"`. Git tags use the same string with
-a `v` prefix (`v0.6.1-oss.1`); npm package versions are separate (`npm-v*` tags).
+`GET /health` reports the version and `"edition": "oss"`. The GitHub release tag for the
+initial self-hosted broker is `v0.6.1`. npm packages use `npm-v*` tags.
+
+## Unreleased
+
+- Removing an agent's usage events preserves audit history and records the removal.
+- Cooperative query visibility uses the stored agent ID when explicit author provenance is absent.
+- Session recall lists active sessions, and linked writes keep replay available for the session TTL.
 
 ## [0.6.1-oss.1] - 2026-11-10
 

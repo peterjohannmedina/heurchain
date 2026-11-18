@@ -125,12 +125,12 @@ func openAPISpec() map[string]interface{} {
 				"requestBody": jsonBody(ref("SessionStartRequest")), "responses": responses("Started session", object),
 			}},
 			"/session/end": map[string]interface{}{"post": map[string]interface{}{
-				"operationId": "endSession", "summary": "End an agent session",
+				"operationId": "endSession", "summary": "End an agent session and discard its replay context",
 				"requestBody": jsonBody(map[string]interface{}{"type": "object", "required": []string{"session_id"}, "properties": map[string]interface{}{"session_id": map[string]interface{}{"type": "string"}}}),
 				"responses":   responses("Session ended", object),
 			}},
 			"/session/{session_id}/context": map[string]interface{}{"get": map[string]interface{}{
-				"operationId": "getSessionContext", "summary": "Get recent session context",
+				"operationId": "getSessionContext", "summary": "Get recent memory text from an active session",
 				"parameters": []map[string]interface{}{
 					{"name": "session_id", "in": "path", "required": true, "schema": map[string]interface{}{"type": "string"}},
 					{"name": "n", "in": "query", "schema": map[string]interface{}{"type": "integer", "minimum": 1, "maximum": 50, "default": 20}},
@@ -210,7 +210,7 @@ func openAPISpec() map[string]interface{} {
 				},
 				"SessionStartRequest": map[string]interface{}{
 					"type": "object", "required": []string{"agent_id"},
-					"properties": map[string]interface{}{"agent_id": map[string]interface{}{"type": "string"}, "ttl_seconds": map[string]interface{}{"type": "integer", "minimum": 1}},
+					"properties": map[string]interface{}{"agent_id": map[string]interface{}{"type": "string"}, "ttl_seconds": map[string]interface{}{"type": "integer", "minimum": 1, "default": defaultSessionTTLSeconds}},
 				},
 			},
 		},

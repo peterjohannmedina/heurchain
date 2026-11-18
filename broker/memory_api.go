@@ -275,7 +275,7 @@ func (s *Server) handleMemoryUpdate(w http.ResponseWriter, r *http.Request) {
 		memoryError(w, storeErr)
 		return
 	}
-	s.auditMemoryChange(r, tenant, key, "memory.update", req.ID, receipt.Revision)
+	s.auditMemoryChange(r, tenant, key, "memory.update", req.ID, receipt.Revision, old.AgentID)
 	if indexErr != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
@@ -283,9 +283,11 @@ func (s *Server) handleMemoryUpdate(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, map[string]interface{}{"id": req.ID, "stored": true, "revision": receipt.Revision, "changed": receipt.Changed, "indexed": indexErr == nil, "retry_required": indexErr != nil})
 }
 
-func (s *Server) auditMemoryChange(r *http.Request, tenant string, key int64, action, id string, revision int64) {
+func (s *Server) auditMemoryChange(r *http.Request, tenant string, key int64, action, id string, revision int64, agentID string) {
 	// Only identities/revisions enter audit telemetry, never memory content.
-	if _, err := s.db.ExecContext(r.Context(), `INSERT INTO audit_log (tenant_id,actor,action,resource,success,details,created_at) VALUES (?,?,?,?,1,?,?)`, tenant, strconv.FormatInt(key, 10), action, id, fmt.Sprintf("revision=%d", revision), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+	if _, err := s.db.ExecContext(r.Context(),
+		`INSERT INTO audit_log (tenant_id,actor,action,resource,success,details,created_at,agent_id) VALUES (?,?,?,?,1,?,?,?)`,
+		tenant, strconv.FormatInt(key, 10), action, id, fmt.Sprintf("revision=%d", revision), time.Now().UTC().Format(time.RFC3339Nano), nullableString(agentID)); err != nil {
 		log.Printf("memory audit unavailable action=%s tenant=%s id=%s", action, tenant, id)
 	}
 }

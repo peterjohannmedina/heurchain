@@ -90,9 +90,20 @@ jobs:
           echo "dense_status=$(echo "$R" | j "d['retrieval']['dense_status']") bm25_status=$(echo "$R" | j "d['retrieval']['bm25_status']")"
           test "$(echo "$R" | j "d['retrieval']['dense_candidates'] > 0")" = True
 
-          echo "== session end, agent recall, manifest"
-          curl -fsS "${H[@]}" -X POST "$BASE/session/end" -d "{\"session_id\":\"$SID\",\"agent_id\":\"smoke\",\"summary\":\"smoke test\"}"; echo
-          curl -fsS "${H[@]}" "$BASE/agent/smoke" | head -c 600; echo
+          echo "== session context and agent recall"
+          R=$(curl -fsS "${H[@]}" "$BASE/agent/smoke/recall")
+          grep -Fq "$SID" <<< "$R"
+          R=$(curl -fsS "${H[@]}" "$BASE/session/$SID/context")
+          grep -q 5433 <<< "$R"
+
+          echo "== session end clears replay context"
+          curl -fsS "${H[@]}" -X POST "$BASE/session/end" -d "{\"session_id\":\"$SID\"}"; echo
+          R=$(curl -fsS "${H[@]}" "$BASE/agent/smoke/recall")
+          test "$(echo "$R" | j "d['session_ids']")" = '[]'
+          R=$(curl -fsS "${H[@]}" "$BASE/session/$SID/context")
+          test "$(echo "$R" | j "d['items']")" = '[]'
+          R=$(curl -fsS "${H[@]}" "$BASE/agent/smoke")
+          grep -q 5433 <<< "$R"
           curl -fsS "${H[@]}" "$BASE/memory/manifest" | head -c 600; echo
 
           echo "== MCP over Streamable HTTP"

@@ -3,7 +3,6 @@ package main
 import (
 	"archive/zip"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1344,7 +1343,7 @@ func parseFrontmatterTags(val string) []string {
 // ---------------------------------------------------------------------------
 // /agents — method dispatcher
 // GET    → handleListAgents  (returns distinct agents seen in last 7 days)
-// DELETE → handleDeleteAgent (removes usage_events + audit_log rows for one agent)
+// DELETE → handleDeleteAgent (removes usage events for one agent)
 // ---------------------------------------------------------------------------
 
 func (s *Server) handleAgents(w http.ResponseWriter, r *http.Request) {
@@ -1472,9 +1471,8 @@ func (s *Server) handleListAgents(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------
 // DELETE /agents?tenant_id=<uuid>&agent_id=<string>
-// Removes all usage_events and audit_log rows for the given agent within the
-// tenant. The special value "unspecified" maps to agent_id IS NULL rows.
-// Redis vector data is intentionally NOT touched in this iteration.
+// Removes usage events for the given agent within the tenant and records the
+// removal in the audit log. "unspecified" maps to usage rows with a NULL agent.
 // ---------------------------------------------------------------------------
 
 func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
@@ -1504,20 +1502,12 @@ func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := s.resolveVaultCaller(w, r, tenantID); !ok {
+	actor, ok := s.resolveVaultCaller(w, r, tenantID)
+	if !ok {
 		return
 	}
 
 	ctx := r.Context()
-
-	// "unspecified" is a UI sentinel for rows where agent_id IS NULL.
-	// Build parameterised queries that handle both cases without string
-	// interpolation.
-	var (
-		usageResult sql.Result
-		auditResult sql.Result
-		err         error
-	)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -1527,28 +1517,24 @@ func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback() //nolint:errcheck
 
+	usageAgent := nullableString(agentID)
 	if agentID == "unspecified" {
-		usageResult, err = tx.ExecContext(ctx,
-			`DELETE FROM usage_events WHERE tenant_id = ? AND agent_id IS NULL`,
-			tenantID)
-		if err == nil {
-			auditResult, err = tx.ExecContext(ctx,
-				`DELETE FROM audit_log WHERE tenant_id = ? AND agent_id IS NULL`,
-				tenantID)
-		}
-	} else {
-		usageResult, err = tx.ExecContext(ctx,
-			`DELETE FROM usage_events WHERE tenant_id = ? AND agent_id = ?`,
-			tenantID, agentID)
-		if err == nil {
-			auditResult, err = tx.ExecContext(ctx,
-				`DELETE FROM audit_log WHERE tenant_id = ? AND agent_id = ?`,
-				tenantID, agentID)
-		}
+		usageAgent = nil
 	}
-
+	usageResult, err := tx.ExecContext(ctx,
+		`DELETE FROM usage_events WHERE tenant_id = ? AND agent_id IS ?`, tenantID, usageAgent)
 	if err != nil {
 		log.Printf("delete agent exec error tenant=%s agent=%s: %v", tenantID, agentID, err)
+		jsonError(w, "database error", http.StatusInternalServerError)
+		return
+	}
+	usageDeleted, _ := usageResult.RowsAffected()
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO audit_log (tenant_id, actor, action, resource, ip_address, user_agent, success, details, agent_id)
+		 VALUES (?, ?, 'agent.usage_delete', ?, ?, ?, 1, ?, ?)`,
+		tenantID, actor, "agent:"+agentID, nullableString(clientIP(r)), auditUserAgent(r),
+		fmt.Sprintf("usage_events_deleted=%d", usageDeleted), usageAgent); err != nil {
+		log.Printf("delete agent audit error tenant=%s agent=%s: %v", tenantID, agentID, err)
 		jsonError(w, "database error", http.StatusInternalServerError)
 		return
 	}
@@ -1558,16 +1544,12 @@ func (s *Server) handleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usageDeleted, _ := usageResult.RowsAffected()
-	auditDeleted, _ := auditResult.RowsAffected()
-
-	log.Printf("delete agent tenant=%s agent=%s usage_events=%d audit_log=%d",
-		tenantID, agentID, usageDeleted, auditDeleted)
+	log.Printf("delete agent tenant=%s agent=%s usage_events=%d", tenantID, agentID, usageDeleted)
 
 	respondJSON(w, map[string]interface{}{
 		"removed":              true,
 		"usage_events_deleted": usageDeleted,
-		"audit_log_deleted":    auditDeleted,
+		"audit_log_deleted":    0, // retained for existing clients
 	})
 }
 

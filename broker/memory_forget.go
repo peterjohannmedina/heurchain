@@ -10,16 +10,17 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func forgetMemory(ctx context.Context, rdb *redis.Client, tenant, id string, expected int64) (int64, error) {
+func forgetMemory(ctx context.Context, rdb *redis.Client, tenant, id string, expected int64) (int64, string, error) {
 	keys := []string{vecKey(tenant, id), memoryVaultKey(tenant, id), vecSetKey(tenant), memoryVersionsKey(tenant, id), memoryTombstoneKey(tenant, id), bm25DocTermsKey(tenant, id), bm25DocLenKey(tenant, id), bm25MetaDocCountKey(tenant), bm25MetaAvgDLKey(tenant), semanticPendingKey}
 	const script = `
 local forgotten = redis.call('GET', KEYS[5])
-if forgotten then return tonumber(cjson.decode(forgotten).revision) end
+if forgotten then return {tonumber(cjson.decode(forgotten).revision), ''} end
 local current = KEYS[1]
 if redis.call('EXISTS', current) == 0 then current = KEYS[2] end
-if redis.call('EXISTS', current) == 0 then return -3 end
+if redis.call('EXISTS', current) == 0 then return {-3, ''} end
 local revision = tonumber(redis.call('HGET', current, 'revision') or '1')
-if revision ~= tonumber(ARGV[2]) then return -1 end
+if revision ~= tonumber(ARGV[2]) then return {-1, ''} end
+local agent = redis.call('HGET', current, 'agent_id') or ''
 local receipt = cjson.encode({id=ARGV[1], revision=revision, forgotten_at=ARGV[3]})
 redis.call('SET', KEYS[5], receipt)
 redis.call('DEL', KEYS[1], KEYS[2], KEYS[4])
@@ -44,18 +45,26 @@ for _, term in ipairs(terms) do
 end
 redis.call('DEL', KEYS[6], KEYS[7])
 redis.call('ZADD', KEYS[10], ARGV[4], ARGV[5])
-return revision`
-	revision, err := redis.NewScript(script).Run(ctx, rdb, keys, id, expected, time.Now().UTC().Format(time.RFC3339Nano), time.Now().UnixMilli(), semanticMember(tenant, id), bm25DFPrefix(tenant), bm25TFPrefix(tenant, id), bm25PostingsPrefix(tenant)).Int64()
+return {revision, agent}`
+	result, err := redis.NewScript(script).Run(ctx, rdb, keys, id, expected, time.Now().UTC().Format(time.RFC3339Nano), time.Now().UnixMilli(), semanticMember(tenant, id), bm25DFPrefix(tenant), bm25TFPrefix(tenant, id), bm25PostingsPrefix(tenant)).Slice()
 	if err != nil {
-		return 0, err
+		return 0, "", err
+	}
+	if len(result) != 2 {
+		return 0, "", fmt.Errorf("invalid forget result length: %d", len(result))
+	}
+	revision, revisionOK := result[0].(int64)
+	agentID, agentOK := result[1].(string)
+	if !revisionOK || !agentOK {
+		return 0, "", fmt.Errorf("invalid forget result")
 	}
 	if revision == -3 {
-		return 0, errMemoryNotFound
+		return 0, "", errMemoryNotFound
 	}
 	if revision == -1 {
-		return 0, errMemoryConflict
+		return 0, "", errMemoryConflict
 	}
-	return revision, nil
+	return revision, agentID, nil
 }
 
 func (s *Server) handleMemoryForget(w http.ResponseWriter, r *http.Request) {
@@ -74,14 +83,14 @@ func (s *Server) handleMemoryForget(w http.ResponseWriter, r *http.Request) {
 	}
 	unlock := lockMemoryTenant(tenant)
 	defer unlock()
-	revision, err := forgetMemory(r.Context(), s.rdb, tenant, req.ID, req.ExpectedRevision)
+	revision, agentID, err := forgetMemory(r.Context(), s.rdb, tenant, req.ID, req.ExpectedRevision)
 	if err != nil {
 		memoryError(w, err)
 		return
 	}
 	denseErr := defaultQdrantClient.DeletePoint(r.Context(), tenant, req.ID)
 	complete := denseErr == nil
-	s.auditMemoryChange(r, tenant, key, "memory.forget", req.ID, revision)
+	s.auditMemoryChange(r, tenant, key, "memory.forget", req.ID, revision, agentID)
 	if !complete {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)

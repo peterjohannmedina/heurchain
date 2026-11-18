@@ -131,10 +131,10 @@ func TestMCPPromoteArchivesWithoutEnablingRestore(t *testing.T) {
 	f := newRecallFixture(t)
 	const id = "low-activation-record"
 	ctx := context.Background()
-	oldConfig := consolidationCfg
+	oldConfig := *consolidationCfg
+	t.Cleanup(func() { *consolidationCfg = oldConfig })
 	consolidationCfg.PromoteLive = false
 	consolidationCfg.PromotionThreshold = 100
-	t.Cleanup(func() { consolidationCfg = oldConfig })
 	f.store(t, id, "old memory to archive", "reader", nil, 1)
 	text := callVaultMCP(t, f.s, "heurchain_promote", map[string]any{"id": id}, false)
 	var receipt struct {
@@ -148,4 +148,26 @@ func TestMCPPromoteArchivesWithoutEnablingRestore(t *testing.T) {
 	if got, err := f.s.rdb.HGet(ctx, memoryVaultKey("t1", id), "text").Result(); err != nil || got != "old memory to archive" {
 		t.Fatalf("archive text not preserved: %q (%v)", got, err)
 	}
+}
+
+func TestMCPVaultFlushReportsDryRunWithoutArchiving(t *testing.T) {
+	f := newRecallFixture(t)
+	oldConfig := *consolidationCfg
+	t.Cleanup(func() { *consolidationCfg = oldConfig })
+	consolidationCfg.PromoteLive = false
+	consolidationCfg.PromotionThreshold = 100
+	consolidationCfg.DemoteFraction = 0
+	f.store(t, "conversation-summary", "completed work", "writer", []string{"conversation"}, 1)
+
+	body := callVaultMCP(t, f.s, "heurchain_vault_flush", nil, false)
+	var receipt struct {
+		Flushed  bool `json:"flushed"`
+		Promoted *int `json:"promoted"`
+	}
+	if err := json.Unmarshal([]byte(body), &receipt); err != nil || !receipt.Flushed ||
+		receipt.Promoted == nil || *receipt.Promoted != 0 {
+		t.Fatalf("flush receipt: %s", body)
+	}
+	requireMemoryKey(t, f.s, vecKey("t1", "conversation-summary"), 1)
+	requireMemoryKey(t, f.s, memoryVaultKey("t1", "conversation-summary"), 0)
 }

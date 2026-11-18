@@ -236,7 +236,7 @@ func TestBackfillCannotRecreatePostingAfterConcurrentForget(t *testing.T) {
 	other := redis.NewClient(rdb.Options())
 	t.Cleanup(func() { _ = other.Close() })
 	hook := &afterBM25PageReadHook{after: func() error {
-		_, err := forgetMemory(ctx, other, "t1", "backfill-forget", 1)
+		_, _, err := forgetMemory(ctx, other, "t1", "backfill-forget", 1)
 		return err
 	}}
 	rdb.AddHook(hook)

@@ -28,7 +28,6 @@ import (
 // implies: it weights age against use in a *ranking*, rather than setting a
 // global offset that the threshold turns into an on/off switch.
 //
-// See docs/architecture/archive-vs-working-set.md 4 and 5a.
 // ---------------------------------------------------------------------------
 
 // demoteCandidate is one document's activation, carried through ranking.
