@@ -5,7 +5,7 @@
 // (npm/.gitignore); the repository root stays the only source.
 import {cpSync,rmSync,existsSync,readFileSync,writeFileSync,statSync} from 'node:fs';
 import {dirname,join,relative,basename,sep} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 
 const pkg=join(dirname(fileURLToPath(import.meta.url)),'..'),root=join(pkg,'..');
 // [source in the repository, destination in the package]
@@ -39,6 +39,16 @@ if(existsSync(join(pkg,'deploy','.gitignore'))){
   writeFileSync(join(pkg,'deploy','gitignore.template'),readFileSync(join(pkg,'deploy','.gitignore')));
   rmSync(join(pkg,'deploy','.gitignore'));
 }
+// Pin the prebuilt broker image to the one built from exactly this broker
+// source (deploy/image-tag.mjs). Without a clean checkout, use a tag that does
+// not exist, so Compose builds the shipped source instead of pulling another one.
+const {imageTag}=await import(pathToFileURL(join(root,'deploy','image-tag.mjs')).href);
+const tag=imageTag(root)||'unpublished-local-build';
+const composeFile=join(pkg,'deploy','compose.yaml');
+const compose=readFileSync(composeFile,'utf8'),pinned=compose.replace('${HEURCHAIN_BROKER_TAG:-master}','${HEURCHAIN_BROKER_TAG:-'+tag+'}');
+if(pinned===compose)throw Error('bundle: compose.yaml has no HEURCHAIN_BROKER_TAG default to pin.');
+writeFileSync(composeFile,pinned);
+console.log('bundle: broker image tag '+tag);
 for(const must of ['broker/main.go','broker/go.mod','broker/schema.sql','deploy/compose.yaml','deploy/Dockerfile','deploy/.env.example','tools/setup/cli.mjs','skills/heurchain-memory/SKILL.md'])
   if(!existsSync(join(pkg,must)))throw Error('bundle: expected '+must+' in the package.');
 console.log('bundle: copied broker, deploy, tools/setup, skills and docs into the package');

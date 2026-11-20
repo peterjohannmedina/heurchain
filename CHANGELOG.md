@@ -11,6 +11,12 @@ initial self-hosted broker is `v0.6.1`. npm packages use `npm-v*` tags.
 
 ## Unreleased
 
+- Prebuilt multi-arch broker images (linux/amd64, linux/arm64) on
+  `ghcr.io/peterjohannmedina/heurchain-broker`; `docker compose up -d` pulls them and builds
+  only as a fallback. The Dockerfile cross-compiles instead of emulating.
+- The bundled Ollama moved to `deploy/compose.ollama.yaml`, included by default.
+  `HEURCHAIN_EMBEDDER_COMPOSE=compose.no-embedder.yaml` uses an embedder you already run
+  without downloading Ollama. Compose 2.20 or later is required (for `include`).
 - npm package 3.0.0 bundles the whole self-hosted edition (broker source, Compose stack, agent
   setup, skill, docs) with a `heurchain` CLI: `npx heurchain init`, `up`, `tenant`, `connect`.
 - Agent setup for Claude Code CLI and Codex CLI (`tools/setup/cli.mjs`): verifies the broker and

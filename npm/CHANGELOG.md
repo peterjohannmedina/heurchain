@@ -1,5 +1,14 @@
 # Changelog (npm package)
 
+## [3.1.0] - 2026-11-20
+
+### Added
+- `heurchain init --embedder host-ollama|openai`: use an embedder you already run instead of
+  the bundled Ollama, which is then not downloaded (first download about 0.5 GB instead of
+  about 4.7 GB). `up` pulls the model into a host Ollama when needed.
+- `heurchain up` pulls the prebuilt multi-arch broker image built from the bundled source
+  (pinned `src-` tag) and compiles only if it cannot pull; `up --build` always compiles.
+
 ## [3.0.0] - 2026-11-20
 
 ### Changed

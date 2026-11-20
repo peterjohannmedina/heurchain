@@ -1,0 +1,4 @@
+# Used instead of compose.ollama.yaml when HEURCHAIN_EMBEDDER_COMPOSE=compose.no-embedder.yaml:
+# the broker embeds through an Ollama or OpenAI-compatible endpoint you already run,
+# configured under embed: in broker.yaml. Nothing is started or downloaded for it.
+services: {}

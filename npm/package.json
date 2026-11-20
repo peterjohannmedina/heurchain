@@ -1,6 +1,6 @@
 {
   "name": "heurchain",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Self-hosted HeurChain in one package: the memory broker (0.6.1-oss.1, Go source with a Docker Compose stack), a CLI to install and run it, and agent setup for MCP, the memory skill and automatic recall",
   "keywords": [
     "mcp",

@@ -1,0 +1,81 @@
+# Builds the broker image for linux/amd64 and linux/arm64 from deploy/Dockerfile
+# and publishes it to ghcr.io/peterjohannmedina/heurchain-broker, so Compose and
+# `npx heurchain up` can pull it instead of compiling the broker.
+#
+# Tags: src-<hash of broker/ and the Dockerfile> (deploy/image-tag.mjs; the npm
+# package pins this one), sha-<commit> and master. Pull requests build both
+# architectures without pushing.
+name: broker image
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "broker/**"
+      - "deploy/Dockerfile"
+      - "deploy/image-tag.mjs"
+      - ".github/workflows/broker-image.yml"
+  pull_request:
+    paths:
+      - "broker/**"
+      - "deploy/Dockerfile"
+      - "deploy/image-tag.mjs"
+      - ".github/workflows/broker-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: broker-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE: ghcr.io/peterjohannmedina/heurchain-broker
+      PUSH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tags
+        run: |
+          TAG=$(node deploy/image-tag.mjs)
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "SHORT=${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+          echo "source tag: $TAG"
+
+      - name: Log in to GitHub Container Registry
+        if: env.PUSH == 'true'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build (and push on master)
+        run: |
+          set -euo pipefail
+          docker buildx create --use --name hc >/dev/null
+          if [ "$PUSH" = true ] && docker buildx imagetools inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+            echo "$IMAGE:$TAG already exists; adding the commit and master tags only."
+            docker buildx imagetools create -t "$IMAGE:sha-$SHORT" -t "$IMAGE:master" "$IMAGE:$TAG"
+            exit 0
+          fi
+          OUT=--push; [ "$PUSH" = true ] || OUT=
+          docker buildx build $OUT --platform linux/amd64,linux/arm64 -f deploy/Dockerfile \
+            --build-arg COMMIT="$GITHUB_SHA" \
+            -t "$IMAGE:$TAG" -t "$IMAGE:sha-$SHORT" -t "$IMAGE:master" .
+
+      - name: Check anonymous pull
+        if: env.PUSH == 'true'
+        run: |
+          docker logout ghcr.io
+          if docker buildx imagetools inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+            echo "Public: $IMAGE:$TAG"
+          else
+            echo "::warning::$IMAGE is not publicly pullable. Make the package public (Package settings -> Change visibility); until then Compose builds from source."
+          fi
