@@ -1,5 +1,12 @@
 # Changelog (npm package)
 
+## [2.0.4] - Unreleased
+
+### Changed
+- README: "Latest update" banner, mirrored from the repository README. It announces the agent
+  setup tool (`tools/setup` in the repository), which adds automatic memory recall for Claude
+  Code and Codex CLI. Package files are otherwise unchanged.
+
 ## [2.0.2] - 2026-11-10
 
 ### Changed

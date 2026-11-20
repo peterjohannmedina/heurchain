@@ -1,17 +1,23 @@
 # Offline tests for the agent setup tool (tools/setup): no broker, client or network.
-name: agent setup tests
+name: agent setup and README tests
 
 on:
   pull_request:
     paths:
       - "tools/setup/**"
       - "skills/**"
+      - "README.md"
+      - "npm/README.md"
+      - "tools/readme-banner.test.mjs"
       - ".github/workflows/agent-setup-tests.yml"
   push:
     branches: [master]
     paths:
       - "tools/setup/**"
       - "skills/**"
+      - "README.md"
+      - "npm/README.md"
+      - "tools/readme-banner.test.mjs"
       - ".github/workflows/agent-setup-tests.yml"
   workflow_dispatch:
 
@@ -33,4 +39,4 @@ jobs:
       - name: Node version
         run: node --version
       - name: Unit tests
-        run: node --test tools/setup/setup.test.mjs
+        run: node --test tools/setup/setup.test.mjs tools/readme-banner.test.mjs
