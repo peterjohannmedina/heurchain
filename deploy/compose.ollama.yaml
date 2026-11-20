@@ -1,0 +1,11 @@
+# The bundled Ollama embedder, included by compose.yaml unless
+# HEURCHAIN_EMBEDDER_COMPOSE names another file. Pull the model once:
+#   docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
+services:
+  ollama:
+    image: ollama/ollama:0.5.7
+    restart: unless-stopped
+    volumes: ["ollama-data:/root/.ollama"]
+
+volumes:
+  ollama-data:

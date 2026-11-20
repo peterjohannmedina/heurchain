@@ -4,20 +4,36 @@
 #   docker compose -f deploy/compose.yaml up -d --build
 #   docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
 #
+# Requires Docker Compose 2.20 or later (for include).
+#
+# Broker image: `up -d` pulls the prebuilt image from GitHub Container Registry
+# and builds from source only if it cannot be pulled; `up -d --build` always
+# builds from this checkout.
+#
+# Embedder: the bundled Ollama (compose.ollama.yaml) is included by default.
+# With an embedder you already run (Ollama on the host, or an OpenAI-compatible
+# API), set HEURCHAIN_EMBEDDER_COMPOSE=compose.no-embedder.yaml in deploy/.env
+# and point embed: in broker.yaml at it; the Ollama image is then not downloaded.
+#
 # Every port is published on 127.0.0.1 only. Put a TLS reverse proxy in front
 # of the broker before exposing it to other machines (see docs/install.md).
 name: heurchain
+
+include:
+  - path: ${HEURCHAIN_EMBEDDER_COMPOSE:-compose.ollama.yaml}
 
 services:
   broker:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: heurchain-broker:0.6.1-oss.1
+    image: ghcr.io/peterjohannmedina/heurchain-broker:${HEURCHAIN_BROKER_TAG:-master}
     restart: unless-stopped
     env_file: [./.env]
     environment:
       QDRANT_URL: http://qdrant:6333
+    # Lets broker.yaml reach an embedder on the host as host.docker.internal.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       redis:
         condition: service_healthy
@@ -48,13 +64,7 @@ services:
     restart: unless-stopped
     volumes: ["qdrant-data:/qdrant/storage"]
 
-  ollama:
-    image: ollama/ollama:0.5.7
-    restart: unless-stopped
-    volumes: ["ollama-data:/root/.ollama"]
-
 volumes:
   broker-data:
   redis-data:
   qdrant-data:
-  ollama-data:

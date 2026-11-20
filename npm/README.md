@@ -78,8 +78,8 @@ holds tenants, keys and the audit log. All of it runs on your machine.
 
 ## Run the broker
 
-Requirements: Node 20+ and Docker Engine with Compose v2 (Podman with `podman compose` also
-works).
+Requirements: Node 20+ and Docker Engine with Compose 2.20 or later (Podman with
+`podman compose` also works).
 
 ```sh
 npx heurchain init        # ./heurchain-server: broker source, Compose stack, docs, and
@@ -91,6 +91,19 @@ npx heurchain tenant --name "My team" --email me@example.com   # tenant ID and A
 
 Every command takes the server directory as an optional first argument (default
 `./heurchain-server`). `init --port 18080` publishes the broker on another host port.
+
+`up` pulls the prebuilt broker image (linux/amd64 and arm64) built from exactly the source in
+this package, and compiles it only if the image cannot be pulled (`up --build` always
+compiles). The largest download is the bundled Ollama embedder (about 3.3 GB). If you already
+run an embedder, skip it, which brings the first download to about 0.5 GB:
+
+```sh
+npx heurchain init --embedder host-ollama     # Ollama already on this machine; up pulls nomic-embed-text into it
+npx heurchain init --embedder openai --embed-url https://api.example.com/v1/embeddings --embed-model <model>
+                                              # any OpenAI-compatible API; key from HEURCHAIN_EMBED_API_KEY
+```
+
+Choose the embedder before storing memories; vectors from different models are not comparable.
 Running `npx heurchain@latest init` again in the same directory upgrades the code and keeps
 `deploy/.env` and an edited `deploy/broker.yaml`. `npx heurchain down` stops the stack and
 keeps its data.

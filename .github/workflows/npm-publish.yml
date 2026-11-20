@@ -77,6 +77,15 @@ jobs:
       - name: Pack (dry run)
         run: npm pack --dry-run
 
+      - name: Check the pinned broker image is public
+        run: |
+          TAG=$(node ../deploy/image-tag.mjs)
+          if docker buildx imagetools inspect "ghcr.io/peterjohannmedina/heurchain-broker:$TAG" >/dev/null 2>&1; then
+            echo "prebuilt broker image available: $TAG"
+          else
+            echo "::warning::ghcr.io/peterjohannmedina/heurchain-broker:$TAG is not publicly pullable; users of this release will build the broker from source. Run the broker image workflow first."
+          fi
+
       - name: Publish
         if: github.event_name == 'release' || inputs.dry_run == false
         run: npm publish --access public

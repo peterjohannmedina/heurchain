@@ -1,7 +1,7 @@
-# End-to-end check of the npm package exactly as a user installs it:
-# npm pack -> install the tarball -> heurchain init -> heurchain up (Docker
-# Compose build, model pull, readiness) -> heurchain tenant -> MCP store and
-# search -> agent setup preflight -> heurchain down.
+# End-to-end check of the npm package exactly as a user installs it, for each
+# embedder option: npm pack -> install the tarball -> heurchain init -> heurchain
+# up -> heurchain tenant -> MCP store and search (dense leg included) -> agent
+# setup preflight -> heurchain down.
 name: npm bundle smoke test
 
 on:
@@ -23,12 +23,21 @@ on:
       - "skills/**"
       - ".github/workflows/npm-bundle-smoke.yml"
   workflow_dispatch:
+    inputs:
+      require_prebuilt_image:
+        description: "Fail unless the broker image was pulled from ghcr.io (run after the broker image workflow)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   npm-bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        embedder: [bundled, host-ollama, openai]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -42,31 +51,62 @@ jobs:
         with:
           node-version: "22"
 
+      - name: CLI unit tests
+        run: node --test npm/test/cli.test.mjs
+
       - name: Pack the npm package
         working-directory: npm
         run: |
           npm pack --pack-destination "$RUNNER_TEMP"
           tar -tzf "$RUNNER_TEMP"/heurchain-*.tgz | sort > "$RUNNER_TEMP/files.txt"
           for f in package/bin/heurchain.mjs package/broker/main.go package/broker/go.mod package/deploy/compose.yaml \
+                   package/deploy/compose.ollama.yaml package/deploy/compose.no-embedder.yaml \
                    package/deploy/Dockerfile package/deploy/.env.example package/tools/setup/cli.mjs \
                    package/skills/heurchain-memory/SKILL.md package/docs/install.md package/AGENT_CONFIG.json; do
             grep -qx "$f" "$RUNNER_TEMP/files.txt" || { echo "::error::missing from the package: $f"; exit 1; }
           done
-          if grep -E '(^|/)\.env$|_test\.go$' "$RUNNER_TEMP/files.txt"; then echo "::error::package contains secrets or tests"; exit 1; fi
+          if grep -E '(^|/)\.env$|_test\.go$|^package/test/' "$RUNNER_TEMP/files.txt"; then echo "::error::package contains secrets or tests"; exit 1; fi
 
       - name: Install the tarball as a user would
         run: npm install -g "$RUNNER_TEMP"/heurchain-*.tgz && heurchain --version
 
+      - name: An embedder already running on this machine
+        if: matrix.embedder != 'bundled'
+        run: |
+          docker run -d --name host-ollama --network host ollama/ollama:0.5.7
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 1; done
+          # host-ollama: heurchain up pulls the model itself. openai: the endpoint must already serve it.
+          if [ "${{ matrix.embedder }}" = openai ]; then curl -fsS http://127.0.0.1:11434/api/pull -d '{"name":"nomic-embed-text","stream":false}'; fi
+
       - name: heurchain init
         working-directory: ${{ runner.temp }}
         run: |
-          heurchain init srv
+          case "${{ matrix.embedder }}" in
+            bundled) heurchain init srv ;;
+            host-ollama) heurchain init srv --embedder host-ollama ;;
+            openai) heurchain init srv --embedder openai --embed-url http://host.docker.internal:11434/v1/embeddings --embed-model nomic-embed-text ;;
+          esac
           test "$(stat -c %a srv/deploy/.env)" = 600
           heurchain init srv | grep -q 'deploy/.env kept'
 
       - name: heurchain up
         working-directory: ${{ runner.temp }}
         run: heurchain up srv
+
+      - name: Stack contents and broker image source
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          docker ps --format '{{.Names}}' | sort
+          if [ "${{ matrix.embedder }}" != bundled ] && docker ps --format '{{.Names}}' | grep -q '^heurchain-ollama'; then
+            echo "::error::the bundled Ollama ran although an external embedder was chosen"; exit 1; fi
+          TAG=$(grep -o 'HEURCHAIN_BROKER_TAG:-[^}]*' srv/deploy/compose.yaml | cut -d- -f2-)
+          IMG="ghcr.io/peterjohannmedina/heurchain-broker:$TAG"
+          if [ "$(docker image inspect "$IMG" --format '{{len .RepoDigests}}')" -gt 0 ]; then echo "broker image pulled: $IMG"
+          else
+            echo "broker image built from the bundled source ($IMG not pullable)"
+            if [ "${{ inputs.require_prebuilt_image }}" = true ]; then echo "::error::expected the prebuilt image"; exit 1; fi
+          fi
 
       - name: heurchain status, tenant and MCP store/search
         working-directory: ${{ runner.temp }}
@@ -79,9 +119,11 @@ jobs:
           mcp() { curl -fsS -X POST "$BASE/mcp/sse" -H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" \
                     -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d "$1"; }
           mcp '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | grep -q heurchain_search
-          mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"heurchain_store","arguments":{"id":"npm-smoke-1","text":"npm bundle smoke test: the canary runs for 17 minutes","agent_id":"smoke"}}}' | grep -q stored
+          mcp '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"heurchain_store","arguments":{"id":"npm-smoke-1","text":"npm bundle smoke test: the canary runs for 17 minutes","agent_id":"smoke"}}}' | tee /tmp/store.txt | grep -q 'indexed\\":true'
           sleep 2
-          mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"heurchain_search","arguments":{"text":"canary minutes","limit":3}}}' | grep -q npm-smoke-1
+          mcp '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"heurchain_search","arguments":{"text":"how long is the canary","limit":3}}}' > /tmp/search.txt
+          grep -q npm-smoke-1 /tmp/search.txt
+          grep -q 'dense_status\\":\\"ok' /tmp/search.txt || { echo "::error::dense search did not run"; cat /tmp/search.txt; exit 1; }
           # Agent setup preflight (dry run): verifies broker, key and tools without changing anything.
           HEURCHAIN_API_KEY="$KEY" heurchain connect --client claude --tenant "$TENANT" | grep -q '"preview":true'
 

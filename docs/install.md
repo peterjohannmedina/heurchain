@@ -12,7 +12,11 @@ Both run the same broker binary and need the same three services:
 
 ## Docker Compose
 
-Requirements: Docker Engine with Compose v2, about 2 GB RAM, about 2 GB of disk for the images and model.
+Requirements: Docker Engine with Compose 2.20 or later, about 2 GB RAM, and about 4 GB of disk for
+the images and model (about 0.5 GB with an embedder you already run, below).
+
+The quickest path is the npm package: `npx heurchain init && npx heurchain up` does the steps
+below for you ([npm](https://www.npmjs.com/package/heurchain)).
 
 ```sh
 git clone https://github.com/peterjohannmedina/heurchain.git
@@ -26,6 +30,40 @@ curl -s http://127.0.0.1:8080/health
 ```
 
 On first start the broker creates its SQLite database from the built-in schema.
+
+### Prebuilt broker image
+
+`--build` compiles the broker from this checkout. Without it, `docker compose up -d` pulls the
+prebuilt multi-arch image (linux/amd64, linux/arm64) from
+`ghcr.io/peterjohannmedina/heurchain-broker` and builds from source only if it cannot pull.
+That skips the Go toolchain image (about 860 MB) and the compile. Images are published from
+master by the [broker image workflow](../.github/workflows/broker-image.yml) with three tags:
+`src-<hash>` (the hash of `broker/` and the Dockerfile; `node deploy/image-tag.mjs` prints it
+for your checkout), `sha-<commit>` and `master`. Pin one with `HEURCHAIN_BROKER_TAG` in
+`deploy/.env`; the npm package pins the `src-` tag of the source it ships.
+
+### Using an embedder you already run
+
+By default the stack includes Ollama (`deploy/compose.ollama.yaml`, about 3.3 GB). To use an
+embedder you already have instead, set in `deploy/.env`
+
+```sh
+HEURCHAIN_EMBEDDER_COMPOSE=compose.no-embedder.yaml
+```
+
+and point `embed:` in `deploy/broker.yaml` at it. The Ollama image is then neither started nor
+downloaded. `npx heurchain init --embedder host-ollama` or `--embedder openai` writes both.
+
+- **Ollama on the host:** `provider: ollama`, `ollama_url: "http://host.docker.internal:11434"`
+  (the broker container resolves `host.docker.internal` to the host), then
+  `ollama pull nomic-embed-text` on the host.
+- **An OpenAI-compatible API** (OpenAI, TEI, vLLM, LM Studio, or Ollama's `/v1/embeddings`):
+  `provider: openai`, `ollama_url: ""`, `openai_url` (the full `/v1/embeddings` URL) and
+  `openai_model`. The broker needs a non-empty `OPENAI_API_KEY` in `deploy/.env` for this
+  provider: the real key, or any placeholder for a keyless local endpoint.
+
+Choose the embedder before storing memories: vectors from different models are not comparable,
+so switching later means re-storing or starting a new store.
 
 ### Create a tenant and API key
 

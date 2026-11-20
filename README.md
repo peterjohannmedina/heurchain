@@ -111,8 +111,11 @@ From npm, without cloning: `npx heurchain init && npx heurchain up`, then
 `npx heurchain tenant --name "My team" --email me@example.com` (Node 20+ and Docker Compose v2;
 see the [npm package](https://www.npmjs.com/package/heurchain)). Or from this repository:
 
-You need Docker Engine with Compose v2 and internet access for the first build (container
-images, Go modules and the embedding model).
+You need Docker Engine with Compose 2.20 or later and internet access for the first start
+(container images and the embedding model; `--build` also downloads Go modules). Without
+`--build`, Compose pulls the prebuilt broker image instead of compiling it. To use an embedder
+you already run instead of the bundled Ollama, see
+[docs/install.md](docs/install.md#using-an-embedder-you-already-run).
 
 ```sh
 git clone https://github.com/peterjohannmedina/heurchain.git
