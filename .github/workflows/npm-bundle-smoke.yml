@@ -102,7 +102,9 @@ jobs:
             echo "::error::the bundled Ollama ran although an external embedder was chosen"; exit 1; fi
           TAG=$(grep -o 'HEURCHAIN_BROKER_TAG:-[^}]*' srv/deploy/compose.yaml | cut -d- -f2-)
           IMG="ghcr.io/peterjohannmedina/heurchain-broker:$TAG"
-          if [ "$(docker image inspect "$IMG" --format '{{len .RepoDigests}}')" -gt 0 ]; then echo "broker image pulled: $IMG"
+          # The published image is built with its commit; a local fallback build reports "unknown".
+          COMMIT=$(curl -fsS "$BASE/health" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).commit||'unknown'))")
+          if [ "$COMMIT" != unknown ]; then echo "broker image pulled: $IMG (commit $COMMIT)"
           else
             echo "broker image built from the bundled source ($IMG not pullable)"
             if [ "${{ inputs.require_prebuilt_image }}" = true ]; then echo "::error::expected the prebuilt image"; exit 1; fi
