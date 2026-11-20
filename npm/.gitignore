@@ -1,0 +1,7 @@
+# Copied from the repository root by scripts/bundle.mjs at pack time.
+/broker/
+/deploy/
+/tools/
+/skills/
+/docs/
+*.tgz

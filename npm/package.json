@@ -1,7 +1,7 @@
 {
   "name": "heurchain",
-  "version": "2.0.4",
-  "description": "Setup guide and agent configuration for the self-hosted HeurChain memory broker (0.6.1-oss.1): persistent, hybrid-search memory shared by every AI agent over MCP or HTTP",
+  "version": "3.0.0",
+  "description": "Self-hosted HeurChain in one package: the memory broker (0.6.1-oss.1, Go source with a Docker Compose stack), a CLI to install and run it, and agent setup for MCP, the memory skill and automatic recall",
   "keywords": [
     "mcp",
     "heurchain",
@@ -12,7 +12,11 @@
     "bm25",
     "rag",
     "self-hosted",
-    "claude"
+    "claude",
+    "memory-server",
+    "docker-compose",
+    "claude-code",
+    "codex"
   ],
   "homepage": "https://github.com/peterjohannmedina/heurchain#readme",
   "repository": {
@@ -25,7 +29,22 @@
   },
   "license": "MIT",
   "author": "HeurChain <info@heurchain.com>",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "heurchain": "bin/heurchain.mjs"
+  },
+  "scripts": {
+    "prepack": "node scripts/bundle.mjs"
+  },
   "files": [
+    "bin/",
+    "broker/",
+    "deploy/",
+    "tools/",
+    "skills/",
+    "docs/",
     "AGENT_CONFIG.json",
     "AGENT_ONBOARDING.md",
     "CHANGELOG.md"

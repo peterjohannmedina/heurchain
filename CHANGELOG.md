@@ -11,6 +11,8 @@ initial self-hosted broker is `v0.6.1`. npm packages use `npm-v*` tags.
 
 ## Unreleased
 
+- npm package 3.0.0 bundles the whole self-hosted edition (broker source, Compose stack, agent
+  setup, skill, docs) with a `heurchain` CLI: `npx heurchain init`, `up`, `tenant`, `connect`.
 - Agent setup for Claude Code CLI and Codex CLI (`tools/setup/cli.mjs`): verifies the broker and
   key, adds the MCP entry, installs the `heurchain-memory` skill and registers an automatic
   recall hook (`UserPromptSubmit`). Recall is on by default only for client builds qualified

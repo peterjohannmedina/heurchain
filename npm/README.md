@@ -38,18 +38,22 @@ models and any HTTP or MCP client share one store. They write facts, decisions a
 summaries, and later recall them with hybrid search: keyword (BM25) and meaning (dense
 vectors), fused into one ranking.
 
-> ### This package is the agent kit, not the server
+> ### This package is the complete self-hosted HeurChain
 >
-> `npm install heurchain` gives you the files agents use to connect to a HeurChain broker:
-> `AGENT_CONFIG.json` (a machine-readable manifest of the API, MCP tools and session
-> protocol) and `AGENT_ONBOARDING.md`. **It does not run anything.**
+> Everything a user or evaluator needs is in the package: the **memory broker** (Go source of
+> broker 0.6.1-oss.1 with its Docker Compose stack: Redis, Qdrant and an Ollama embedder), a
+> **`heurchain` CLI** that installs and runs it, and the **agent side**: MCP setup for Claude
+> Code and Codex, the memory skill and the automatic recall hook. It needs Node 20+ and Docker
+> Engine with Compose v2 (or Podman).
 >
-> **To run HeurChain**, clone the GitHub repository and start it with Docker Compose. That
-> repository is the complete self-hosted package: the Go broker 0.6.1-oss.1, Redis, Qdrant and an
-> embedding model. See [Run the broker](#run-the-broker) below.
+> ```sh
+> npx heurchain init                 # unpack the server into ./heurchain-server
+> npx heurchain up                   # build and start it (first run downloads images and the model)
+> npx heurchain tenant --name "My team" --email me@example.com
+> ```
 >
-> Versions 1.x were a Node.js server. They are deprecated and still installable as
-> `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x).
+> Versions 2.0.0 to 2.0.4 contained only the agent configuration files; 1.x was the old Node.js
+> server (still installable as `heurchain@1`, see [Upgrading from 1.x](#upgrading-from-1x)).
 
 Source and install guide: **https://github.com/peterjohannmedina/heurchain**
 
@@ -74,32 +78,40 @@ holds tenants, keys and the audit log. All of it runs on your machine.
 
 ## Run the broker
 
-Requirements: Docker Engine with Compose v2.
+Requirements: Node 20+ and Docker Engine with Compose v2 (Podman with `podman compose` also
+works).
 
 ```sh
-git clone https://github.com/peterjohannmedina/heurchain.git
-cd heurchain
-cp deploy/.env.example deploy/.env      # set ADMIN_USER and a long random ADMIN_PASS
-docker compose -f deploy/compose.yaml up -d --build
-docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
-curl -s http://127.0.0.1:8080/health
+npx heurchain init        # ./heurchain-server: broker source, Compose stack, docs, and
+                          # deploy/.env with a random admin password (mode 0600, not printed)
+npx heurchain up          # docker compose up --build, pull nomic-embed-text, wait for /ready
+npx heurchain status      # GET /health
+npx heurchain tenant --name "My team" --email me@example.com   # tenant ID and API key, shown once
 ```
 
-The stack runs the broker, Redis, Qdrant and Ollama, published on `127.0.0.1` only. These
-steps are tested end to end on every broker or deploy change. The full guide (native
-systemd install, TLS, backups) is
-[docs/install.md](https://github.com/peterjohannmedina/heurchain/blob/master/docs/install.md).
+Every command takes the server directory as an optional first argument (default
+`./heurchain-server`). `init --port 18080` publishes the broker on another host port.
+Running `npx heurchain@latest init` again in the same directory upgrades the code and keeps
+`deploy/.env` and an edited `deploy/broker.yaml`. `npx heurchain down` stops the stack and
+keeps its data.
 
-Create a tenant and API key (the key is shown once):
-
-```sh
-curl -s -u "$ADMIN_USER:$ADMIN_PASS" -X POST http://127.0.0.1:8080/admin/tenants \
-  -H 'Content-Type: application/json' -d '{"name":"My team","email":"me@example.com"}'
-```
+The stack runs the broker, Redis, Qdrant and Ollama, published on `127.0.0.1` only. The
+unpacked directory has the same layout as the GitHub repository, so
+[docs/install.md](https://github.com/peterjohannmedina/heurchain/blob/master/docs/install.md)
+(native systemd install, TLS, backups) applies to it unchanged. You can also clone the
+repository and run `docker compose -f deploy/compose.yaml up -d --build` yourself.
 
 ## Wire your agent
 
-Every request sends two headers: `X-HeurChain-API-Key: <api_key>` and
+**Claude Code or Codex CLI: one command.** It verifies the broker and key, adds the MCP entry,
+installs the memory skill and, on qualified client builds, turns on automatic recall
+([guide](https://github.com/peterjohannmedina/heurchain/blob/master/docs/agent-setup.md)):
+
+```sh
+HEURCHAIN_API_KEY=<api_key> npx heurchain connect --client claude --tenant <tenant_id> --apply
+```
+
+**Any other MCP or HTTP client:** every request sends two headers: `X-HeurChain-API-Key: <api_key>` and
 `X-HeurChain-Tenant: <tenant_id>`.
 
 **MCP (Streamable HTTP)**, for example Claude Code:
@@ -136,11 +148,16 @@ you. Follow the session protocol in AGENT_CONFIG.json.
 
 ## What's in this package
 
-| File | For |
+| Path | For |
 |---|---|
+| `bin/heurchain.mjs` | The `heurchain` CLI: `init`, `up`, `status`, `tenant`, `connect`, `down` |
+| `broker/` | Go source of the HeurChain broker 0.6.1-oss.1, built by the Compose stack |
+| `deploy/` | Dockerfile, `compose.yaml` (broker, Redis, Qdrant, Ollama), `broker.yaml`, `.env.example`, systemd unit |
+| `tools/setup/` | Agent setup: MCP entry, skill and automatic recall hook for Claude Code and Codex CLI |
+| `skills/heurchain-memory/` | The memory skill (standing guidance for agents) |
+| `docs/` | Install guide and agent setup guide |
 | `AGENT_CONFIG.json` | Machine-readable manifest: auth headers, MCP and HTTP connection, session protocol, every HTTP operation and MCP tool of broker 0.6.1-oss.1 |
 | `AGENT_ONBOARDING.md` | The broker's own agent guide (the same text it serves at `GET /`) |
-| `README.md` | This file |
 
 ```js
 const config = require('heurchain/AGENT_CONFIG.json');
