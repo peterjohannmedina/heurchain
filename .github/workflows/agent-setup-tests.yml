@@ -1,0 +1,36 @@
+# Offline tests for the agent setup tool (tools/setup): no broker, client or network.
+name: agent setup tests
+
+on:
+  pull_request:
+    paths:
+      - "tools/setup/**"
+      - "skills/**"
+      - ".github/workflows/agent-setup-tests.yml"
+  push:
+    branches: [master]
+    paths:
+      - "tools/setup/**"
+      - "skills/**"
+      - ".github/workflows/agent-setup-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Node version
+        run: node --version
+      - name: Unit tests
+        run: node --test tools/setup/setup.test.mjs

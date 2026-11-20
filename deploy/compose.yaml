@@ -23,7 +23,8 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_started
-    ports: ["127.0.0.1:8080:8080"]
+    # HEURCHAIN_PORT changes only the host side (for example when 8080 is taken).
+    ports: ["127.0.0.1:${HEURCHAIN_PORT:-8080}:8080"]
     volumes:
       - ./broker.yaml:/etc/heurchain/broker.yaml:ro
       - broker-data:/var/lib/heurchain

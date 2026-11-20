@@ -68,6 +68,9 @@ claude mcp add --transport http heurchain http://127.0.0.1:8080/mcp/sse \
   --header "X-HeurChain-API-Key: $KEY" --header "X-HeurChain-Tenant: $TENANT"
 ```
 
+For Claude Code and Codex CLI, `node tools/setup/cli.mjs connect` does this for you and keeps
+the key out of client config files; see [agent-setup.md](agent-setup.md).
+
 Restarting the broker drops legacy SSE sessions (they live in memory); Streamable HTTP
 clients are unaffected.
 

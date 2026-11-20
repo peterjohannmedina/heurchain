@@ -19,6 +19,6 @@ Use the values for the intended workspace from your HeurChain dashboard. Do not 
 
 ## Self-hosted broker
 
-Follow the repository's [Docker Compose quick start](../README.md#quick-start) to run the broker and create a local tenant/key. For a default local installation, select Streamable HTTP and `http://127.0.0.1:8080/mcp/sse` from a client on the same machine. Use the **local** key and tenant, never the hosted values. See the [installation guide](../docs/install.md) for other deployment and client settings.
+Follow the repository's [Docker Compose quick start](../README.md#quick-start) to run the broker and create a local tenant/key. For a default local installation, select Streamable HTTP and `http://127.0.0.1:8080/mcp/sse` from a client on the same machine. Use the **local** key and tenant, never the hosted values. For Claude Code and Codex CLI, [`tools/setup`](../docs/agent-setup.md) adds the entry, the skill and the optional automatic recall hook in one local flow. See the [installation guide](../docs/install.md) for other deployment and client settings.
 
 The self-hosted broker release is `0.6.1-oss.1`; the [`heurchain` npm package](../npm/README.md) is a separately versioned setup guide and agent configuration kit, **not** an MCP server or launcher. For instructions on using memory after connecting, see the [agent skill](../skills/heurchain-memory/SKILL.md) or its [canonical Markdown download](https://heurchain.com/skills/heurchain-memory/SKILL.md).

@@ -1,0 +1,572 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-20T20:58:34.812Z",
+  "platform": "win32-x64",
+  "node": "v24.18.1",
+  "broker": {
+    "version": "0.6.1-oss.1",
+    "edition": "oss",
+    "sha256": "14b06a603c1de5c8211db0ee37490433a75b3d9a062512e1e62152da5ed93e95"
+  },
+  "synthetic_record": "native-check-qz9-876375",
+  "boundary": "real disposable broker behind a loopback counting proxy; loopback model stand-ins (no vendor model call); synthetic key held in each disposable profile; profiles deleted after each case",
+  "executables": {
+    "claude": {
+      "sha256": "527162bb4578e3dc36319fa913a530d5dc1f752115a6a4fd139981702bf282d0"
+    },
+    "codex": {
+      "sha256": "8d06dc231dba649c7d48d3eecab239c452a1ac498c41dd6492a6f301b90a22ce"
+    }
+  },
+  "cases": [
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "memory-needed",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 1,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": true,
+        "hook_label": true,
+        "evidence_roles": [
+          "user"
+        ],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": true,
+      "mcp_list": "heurchain-local: http://127.0.0.1:<proxy>/mcp/sse (HTTP) - √ Connected",
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "self-contained",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": false,
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "heurchain-unavailable",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 1,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": false,
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "opt-out",
+      "exit": 0,
+      "recall_enabled": false,
+      "recall_source": "opt-out",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 0,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": false,
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "env-off",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": false,
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "upgrade",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 1,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": true,
+        "hook_label": true,
+        "evidence_roles": [
+          "user"
+        ],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 1,
+      "second_request": null,
+      "answer_has_fact": true,
+      "upgrade": {
+        "runtime_sha256_matches": true,
+        "registrations": 1,
+        "stale_flag_gone": true
+      },
+      "pass": true
+    },
+    {
+      "client": "claude",
+      "version": "2.1.329 (Claude Code)",
+      "shell": "client-default",
+      "case": "client-tool-call",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "hook_version": "1.3.0-oss.1",
+      "hook_sha256": "da15d634f32ed44cc4f1f4ab18032d30315ba0d47fc1bd3213f6446ef0ddfb27",
+      "unrelated_settings_kept": true,
+      "hook_registrations": 1,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "claude-code:server/discover",
+        "claude-code:initialize",
+        "claude-code:notifications/initialized",
+        "claude-code:null",
+        "claude-code:tools/list",
+        "claude-code:heurchain_search"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24,
+        "has_tool_result": false,
+        "tool_result_has_fact": false
+      },
+      "requests": 2,
+      "second_request": {
+        "ordinal": 2,
+        "evidence": true,
+        "hook_label": false,
+        "evidence_roles": [
+          "user"
+        ],
+        "heurchain_tools": 24,
+        "has_tool_result": true,
+        "tool_result_has_fact": true
+      },
+      "answer_has_fact": true,
+      "upgrade": null,
+      "pass": true
+    },
+    {
+      "client": "codex",
+      "version": "codex-cli 0.170.0",
+      "case": "memory-needed",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "trusted_hooks": [
+        {
+          "event": "userPromptSubmit",
+          "hash": "sha256:34377ffdcd24e743a3d5beb9526121d257d70e921f309d34f6c8b47cfbd31b23",
+          "label": "HeurChain memory recall"
+        },
+        {
+          "event": "stop",
+          "hash": "sha256:646e52dc1c3a4e7fa96102d1931045c8117f09b368930dc0ef8f5fc43ae441df",
+          "label": null
+        }
+      ],
+      "hook_version": "1.3.0-oss.1",
+      "mcp_table_written": true,
+      "unrelated_hooks_kept": true,
+      "hook_registrations": 1,
+      "lookups": 1,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "bridge:initialize",
+        "bridge:notifications/initialized",
+        "bridge:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "tool_names_sample": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:list_mcp_resources",
+          "function:list_mcp_resource_templates",
+          "function:read_mcp_resource",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "namespace:mcp__heurchain_local",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search:"
+        ],
+        "evidence": true,
+        "hook_label": true,
+        "evidence_roles": [
+          "developer"
+        ],
+        "heurchain_tools": 24
+      },
+      "requests": 1,
+      "answer_has_fact": true,
+      "diagnostics": [],
+      "pass": true
+    },
+    {
+      "client": "codex",
+      "version": "codex-cli 0.170.0",
+      "case": "self-contained",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "trusted_hooks": [
+        {
+          "event": "userPromptSubmit",
+          "hash": "sha256:9dccfb9c109804f8eb04db18792487c1e5c37c4bf26262e7031c812c439b96e5",
+          "label": "HeurChain memory recall"
+        },
+        {
+          "event": "stop",
+          "hash": "sha256:646e52dc1c3a4e7fa96102d1931045c8117f09b368930dc0ef8f5fc43ae441df",
+          "label": null
+        }
+      ],
+      "hook_version": "1.3.0-oss.1",
+      "mcp_table_written": true,
+      "unrelated_hooks_kept": true,
+      "hook_registrations": 1,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "bridge:initialize",
+        "bridge:notifications/initialized",
+        "bridge:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "tool_names_sample": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:list_mcp_resources",
+          "function:list_mcp_resource_templates",
+          "function:read_mcp_resource",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "namespace:mcp__heurchain_local",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search:"
+        ],
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24
+      },
+      "requests": 1,
+      "answer_has_fact": false,
+      "diagnostics": [],
+      "pass": true
+    },
+    {
+      "client": "codex",
+      "version": "codex-cli 0.170.0",
+      "case": "heurchain-unavailable",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "trusted_hooks": [
+        {
+          "event": "userPromptSubmit",
+          "hash": "sha256:bf6d93d5d04c7bfa72ecbf21ae00a576dd935acfe5ebd91148dc6dad3068ced7",
+          "label": "HeurChain memory recall"
+        },
+        {
+          "event": "stop",
+          "hash": "sha256:646e52dc1c3a4e7fa96102d1931045c8117f09b368930dc0ef8f5fc43ae441df",
+          "label": null
+        }
+      ],
+      "hook_version": "1.3.0-oss.1",
+      "mcp_table_written": true,
+      "unrelated_hooks_kept": true,
+      "hook_registrations": 1,
+      "lookups": 1,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "bridge:initialize",
+        "bridge:notifications/initialized",
+        "bridge:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "tool_names_sample": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:list_mcp_resources",
+          "function:list_mcp_resource_templates",
+          "function:read_mcp_resource",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "namespace:mcp__heurchain_local",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search:"
+        ],
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24
+      },
+      "requests": 1,
+      "answer_has_fact": false,
+      "diagnostics": [],
+      "pass": true
+    },
+    {
+      "client": "codex",
+      "version": "codex-cli 0.170.0",
+      "case": "untrusted-memory-needed",
+      "exit": 0,
+      "recall_enabled": true,
+      "recall_source": "default",
+      "trusted_hooks": [],
+      "hook_version": "1.3.0-oss.1",
+      "mcp_table_written": true,
+      "unrelated_hooks_kept": true,
+      "hook_registrations": 1,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "bridge:initialize",
+        "bridge:notifications/initialized",
+        "bridge:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "tool_names_sample": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:list_mcp_resources",
+          "function:list_mcp_resource_templates",
+          "function:read_mcp_resource",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "namespace:mcp__heurchain_local",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search:"
+        ],
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24
+      },
+      "requests": 1,
+      "answer_has_fact": false,
+      "diagnostics": [],
+      "pass": true
+    },
+    {
+      "client": "codex",
+      "version": "codex-cli 0.170.0",
+      "case": "opt-out",
+      "exit": 0,
+      "recall_enabled": false,
+      "recall_source": "opt-out",
+      "trusted_hooks": [],
+      "hook_version": null,
+      "mcp_table_written": true,
+      "unrelated_hooks_kept": true,
+      "hook_registrations": 0,
+      "lookups": 0,
+      "bridge_calls": [
+        "node:initialize",
+        "node:tools/list",
+        "bridge:initialize",
+        "bridge:notifications/initialized",
+        "bridge:tools/list"
+      ],
+      "first_request": {
+        "ordinal": 1,
+        "tool_names_sample": [
+          "function:exec_command",
+          "function:write_stdin",
+          "function:list_mcp_resources",
+          "function:list_mcp_resource_templates",
+          "function:read_mcp_resource",
+          "function:request_user_input",
+          "function:view_image",
+          "namespace:multi_agent_v1",
+          "namespace:mcp__heurchain_local",
+          "function:get_goal",
+          "function:create_goal",
+          "function:update_goal",
+          "web_search:"
+        ],
+        "evidence": false,
+        "hook_label": false,
+        "evidence_roles": [],
+        "heurchain_tools": 24
+      },
+      "requests": 1,
+      "answer_has_fact": false,
+      "diagnostics": [],
+      "pass": true
+    }
+  ]
+}

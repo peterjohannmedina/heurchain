@@ -11,6 +11,15 @@ initial self-hosted broker is `v0.6.1`. npm packages use `npm-v*` tags.
 
 ## Unreleased
 
+- Agent setup for Claude Code CLI and Codex CLI (`tools/setup/cli.mjs`): verifies the broker and
+  key, adds the MCP entry, installs the `heurchain-memory` skill and registers an automatic
+  recall hook (`UserPromptSubmit`). Recall is on by default only for client builds qualified
+  against this broker build (Claude Code 2.1.329 and Codex CLI 0.170.0 on Windows). It has
+  three off switches and supports repeat setup, upgrade, uninstall and rollback. See
+  docs/agent-setup.md.
+- The `heurchain-memory` skill explains hook-initiated recall and asks agents to save under their
+  own agent ID.
+- `deploy/compose.yaml`: `HEURCHAIN_PORT` changes the published host port (default 8080).
 - Removing an agent's usage events preserves audit history and records the removal.
 - Cooperative query visibility uses the stored agent ID when explicit author provenance is absent.
 - Session recall lists active sessions, and linked writes keep replay available for the session TTL.

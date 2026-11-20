@@ -116,6 +116,19 @@ pull, tenant, store, hybrid search, sessions, MCP, and a full stack restart.
 
 ## Connect your agents
 
+**Claude Code or Codex CLI: one command.** [`tools/setup`](docs/agent-setup.md) verifies the
+broker and your key, adds the MCP entry, installs the [memory skill](skills/heurchain-memory/SKILL.md)
+and, on qualified client builds, turns on automatic recall (a prompt-submit hook that searches
+before prompts that depend on earlier work). It also handles repeat runs, upgrades and
+uninstall, without touching other MCP servers or hooks:
+
+```sh
+HEURCHAIN_API_KEY=... node tools/setup/cli.mjs connect --client claude --tenant <tenant_id> --apply
+```
+
+See [docs/agent-setup.md](docs/agent-setup.md) for the client matrix, the off switches and what
+is not verified.
+
 **MCP (Streamable HTTP)** at `http://<host>:8080/mcp/sse`, with the same two headers. For
 Claude Code:
 
@@ -164,6 +177,8 @@ stops startup with an error naming it) and secrets in `deploy/.env`. The comment
 | [`broker/schema.sql`](broker/schema.sql) | SQLite baseline schema, embedded in the broker and applied on first start |
 | [`deploy/`](deploy) | Dockerfile, Compose stack, example config, systemd unit |
 | [`docs/`](docs) | Installation and operation; diagram sources |
+| [`tools/setup/`](tools/setup) | Local agent setup: MCP entry, skill, automatic recall hook ([docs](docs/agent-setup.md)) |
+| [`skills/`](skills) | The `heurchain-memory` agent skill |
 | [`npm/`](npm) | Source of the `heurchain` npm package: agent configuration and guide (no server) |
 
 ## Build and test
@@ -175,6 +190,8 @@ go test ./...      # uses an in-memory Redis; no services needed
 ```
 
 Go 1.23 or newer. The broker uses pure-Go SQLite, so no C toolchain is required.
+
+The agent setup tool has offline tests: `node --test tools/setup/setup.test.mjs` (Node 20+).
 
 ## Tips for better recall
 
