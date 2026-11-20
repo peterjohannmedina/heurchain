@@ -1,5 +1,22 @@
 # Changelog (npm package)
 
+## [3.0.0] - 2026-11-20
+
+### Changed
+- The package is the complete self-hosted HeurChain again, not just the agent configuration.
+  It ships the broker 0.6.1-oss.1 Go source and Docker Compose stack (`broker/`, `deploy/`),
+  agent setup (`tools/setup/`), the `heurchain-memory` skill and the install and agent setup
+  guides. Versions 2.0.0 to 2.0.4 contained only `AGENT_CONFIG.json` and
+  `AGENT_ONBOARDING.md`.
+
+### Added
+- A `heurchain` CLI: `init` unpacks the server and writes `deploy/.env` with a random admin
+  password, `up` builds and starts the stack and waits until the broker is ready, `tenant`
+  creates a tenant and API key, `connect` runs agent setup, and `status` and `down` check or
+  stop the stack. Re-running `init` upgrades the code and keeps `deploy/.env` and an edited
+  `deploy/broker.yaml`.
+- README: token-savings chart and links to HeurChain research.
+
 ## [2.0.4] - 2026-11-20
 
 ### Changed

@@ -58,7 +58,7 @@ unit for native installs, and the docs. No accounts, billing or cloud services a
 | Connect an MCP client | [MCP connection guide and registry descriptor](mcp/README.md): choose the hosted service **or** your self-hosted broker. |
 | Teach an agent to use a connected HeurChain store | [HeurChain memory skill](skills/heurchain-memory/SKILL.md). This is an optional instruction file, not an MCP server or installer. |
 | **Run HeurChain** (the memory server) | **This repository**: `git clone`, then `docker compose up` ([quick start](#quick-start)) |
-| Point an agent at a running broker | The [`heurchain` npm package](https://www.npmjs.com/package/heurchain): `AGENT_CONFIG.json` and the onboarding guide. It contains no server. |
+| Install and run everything from npm | The [`heurchain` npm package](https://www.npmjs.com/package/heurchain): the broker source and Compose stack, a `heurchain` CLI (`npx heurchain init`, `up`, `tenant`, `connect`), agent setup, the skill and `AGENT_CONFIG.json`. Needs Docker Compose. |
 | The old 1.x Node.js server | Deprecated. Still installable as `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x). |
 
 ## How it works
@@ -106,6 +106,10 @@ broker serves the same guide to agents at `GET /`.
 The diagram sources are in [`docs/diagrams/`](docs/diagrams) (Mermaid).
 
 ## Quick start
+
+From npm, without cloning: `npx heurchain init && npx heurchain up`, then
+`npx heurchain tenant --name "My team" --email me@example.com` (Node 20+ and Docker Compose v2;
+see the [npm package](https://www.npmjs.com/package/heurchain)). Or from this repository:
 
 You need Docker Engine with Compose v2 and internet access for the first build (container
 images, Go modules and the embedding model).
@@ -210,7 +214,7 @@ stops startup with an error naming it) and secrets in `deploy/.env`. The comment
 | [`docs/`](docs) | Installation and operation; diagram sources |
 | [`tools/setup/`](tools/setup) | Local agent setup: MCP entry, skill, automatic recall hook ([docs](docs/agent-setup.md)) |
 | [`skills/`](skills) | The `heurchain-memory` agent skill |
-| [`npm/`](npm) | Source of the `heurchain` npm package: agent configuration and guide (no server) |
+| [`npm/`](npm) | Source of the `heurchain` npm package: the CLI and agent configuration; `npm pack` bundles the broker, `deploy/`, `tools/setup`, skills and docs from this repository |
 
 ## Build and test
 
