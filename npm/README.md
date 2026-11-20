@@ -16,6 +16,23 @@
 > Windows, the builds it was tested with; other versions and platforms can opt in.
 <!-- latest-update:end -->
 
+<!-- research:start (keep README.md and npm/README.md identical; checked by tools/readme-banner.test.mjs) -->
+### Fewer tokens than carrying the whole history
+
+![Bar charts for three readers on LoCoMo: HeurChain answers 436.3, 469 and 467.5 of 543 questions against 426, 495 and 492 when the whole conversation is sent, using about 4,900 to 5,000 input tokens per question instead of about 117,000.](https://raw.githubusercontent.com/peterjohannmedina/heurchain/master/docs/charts/token-savings.png)
+
+Without a memory system, an agent harness has two choices: start each task knowing nothing
+(0 of 543 LoCoMo questions answered, for every reader tested) or send the whole history with
+every request (about 117,000 input tokens per question). HeurChain sends only the stored turns
+that match the question: about 4,900 to 5,000 tokens, roughly 4% of the whole history, while
+keeping 95–102% of its accuracy. The saving comes from retrieval, not from compressing or
+summarizing anything. Same questions, readers, judge and harness throughout.
+
+Method, per-category results and comparisons with Mem0, Zep and others:
+[HeurChain on LoCoMo](https://heurchain.com/research/papers/heurchain-on-locomo/) ·
+[all HeurChain research papers](https://heurchain.com/research)
+<!-- research:end -->
+
 HeurChain is a persistent memory broker for AI agents. Claude Code, Codex, Gemini, local
 models and any HTTP or MCP client share one store. They write facts, decisions and session
 summaries, and later recall them with hybrid search: keyword (BM25) and meaning (dense
