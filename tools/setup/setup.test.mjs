@@ -199,3 +199,16 @@ test('the copied runtimes contain no hosted endpoint', async () => {
   for(const text of [await bundled.hook(),await bundled.bridge()])assert.doesNotMatch(text,/api\.heurchain\.com|hc_client_/);
   const files=await readdir(new URL('./templates/',import.meta.url));assert.deepEqual(files.sort(),['recall-hook.claude.json','recall-hook.codex.json']);
 });
+
+test('a linked parent folder is refused; a linked ancestor is fine', async () => {
+  const {symlink}=await import('node:fs/promises');
+  const {home}=await profile();
+  try{
+    const real=join(home,'real');await mkdir(join(real,'sub'),{recursive:true});
+    await symlink(real,join(home,'link'),'junction');
+    // Ancestor is a link (like macOS /var or a Windows short path): allowed.
+    assert.equal((await transact(join(home,'link','sub','settings.json'),()=>'{}\n',{apply:true})).applied,true);
+    // Immediate parent is a link: refused.
+    await assert.rejects(transact(join(home,'link','settings.json'),()=>'{}\n',{apply:true}),/Symlinked parent/);
+  }finally{await rm(home,{recursive:true,force:true});}
+});

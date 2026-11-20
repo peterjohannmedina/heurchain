@@ -4,7 +4,7 @@
 // the merged result before anything is replaced, keeps a private backup and a
 // receipt, and swaps the file in with an atomic rename only if the target did
 // not change underneath. rollback() restores a backup taken by transact().
-import {readFile,lstat,realpath,open,rename,unlink,mkdir} from 'node:fs/promises';
+import {readFile,lstat,open,rename,unlink,mkdir} from 'node:fs/promises';
 import {resolve,dirname,basename} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 
@@ -20,8 +20,10 @@ async function snapshot(file){
 async function exclusive(file,text,mode=0o600){const handle=await open(file,'wx',mode);try{await handle.writeFile(text);await handle.sync();}finally{await handle.close();}}
 async function target(file){
   const absolute=resolve(file);
-  // Refuse indirect targets (a symlinked parent) and anything outside the allowlist.
-  if(resolve(await realpath(dirname(absolute)))!==dirname(absolute))throw Error('Symlinked parent requires manual review.');
+  // Refuse indirect targets (a parent folder that is itself a symlink or junction)
+  // and anything outside the allowlist. Links further up (macOS /var, a Windows
+  // 8.3 short path, a symlinked home) are ordinary and allowed.
+  if((await lstat(dirname(absolute))).isSymbolicLink())throw Error('Symlinked parent requires manual review.');
   if(!SUPPORTED_TARGETS.includes(basename(absolute)))throw Error('Use an explicit supported configuration filename.');
   return absolute;
 }
