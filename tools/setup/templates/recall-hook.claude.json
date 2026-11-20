@@ -1,0 +1,20 @@
+{
+  "client": "claude",
+  "file": "~/.claude/settings.json",
+  "review": "Claude Code loads user hooks at startup. Inspect the entry with /hooks before relying on it.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{COMMAND}}",
+            "timeout": 10,
+            "statusMessage": "HeurChain memory recall"
+          }
+        ]
+      }
+    ]
+  },
+  "label": "HeurChain memory recall"
+}
