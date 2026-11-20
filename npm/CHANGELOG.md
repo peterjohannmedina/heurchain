@@ -1,6 +1,6 @@
 # Changelog (npm package)
 
-## [2.0.4] - Unreleased
+## [2.0.4] - 2026-11-20
 
 ### Changed
 - README: "Latest update" banner, mirrored from the repository README. It announces the agent
