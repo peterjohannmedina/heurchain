@@ -25,12 +25,7 @@
 
 ![Bar charts for three readers on LoCoMo: HeurChain answers 436.3, 469 and 467.5 of 543 questions against 426, 495 and 492 when the whole conversation is sent, using about 4,900 to 5,000 input tokens per question instead of about 117,000.](https://raw.githubusercontent.com/peterjohannmedina/heurchain/master/docs/charts/token-savings.png)
 
-Without a memory system, an agent harness has two choices: start each task knowing nothing
-(0 of 543 LoCoMo questions answered, for every reader tested) or send the whole history with
-every request (about 117,000 input tokens per question). HeurChain sends only the stored turns
-that match the question: about 4,900 to 5,000 tokens, roughly 4% of the whole history, while
-keeping 95–102% of its accuracy. The saving comes from retrieval, not from compressing or
-summarizing anything. Same questions, readers, judge and harness throughout.
+On 543 scored LoCoMo development questions, HeurChain used about 4,900–5,000 input tokens per question versus about 117,000 with the full conversation (about 4% as many). Across three readers, scores ranged from 4.8 percentage points below the full-history baseline to 1.9 points above it.
 
 Method, per-category results and comparisons with Mem0, Zep and others:
 [HeurChain on LoCoMo](https://heurchain.com/research/papers/heurchain-on-locomo/) ·
