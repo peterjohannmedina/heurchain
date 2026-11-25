@@ -9,7 +9,8 @@
 > runbook), it runs a memory search and hands the agent the matching records together with
 > your prompt. Prompts that stand on their own are never sent, and it is easy to turn off.
 >
-> One command connects the agent, installs the memory skill and turns this on:
+> One command connects the agent and installs the memory skill. Automatic recall
+> is enabled by default only on qualified builds:
 > `node tools/setup/cli.mjs connect --client claude --tenant <tenant_id> --apply`
 > ([setup guide](https://github.com/peterjohannmedina/heurchain/blob/master/docs/agent-setup.md)). It works with the existing 0.6.1-oss.1 broker,
 > with no broker upgrade. It is on by default for Claude Code 2.1.329 and Codex CLI 0.170.0 on
@@ -79,7 +80,7 @@ Requirements: Node 20+ and Docker Engine with Compose 2.20 or later (Podman with
 ```sh
 npx heurchain init        # ./heurchain-server: broker source, Compose stack, docs, and
                           # deploy/.env with a random admin password (mode 0600, not printed)
-npx heurchain up          # docker compose up --build, pull nomic-embed-text, wait for /ready
+npx heurchain up          # prefer the prebuilt broker, prepare the model, wait for /ready
 npx heurchain status      # GET /health
 npx heurchain tenant --name "My team" --email me@example.com   # tenant ID and API key, shown once
 ```

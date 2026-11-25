@@ -18,7 +18,11 @@ the images and model (about 0.5 GB with an embedder you already run, below).
 The quickest path is the npm package: `npx heurchain init && npx heurchain up` does the steps
 below for you ([npm](https://www.npmjs.com/package/heurchain)).
 
-```sh
+Run the Bash block in Bash or Git Bash. PowerShell users can use the next block.
+Use the default port shown here, or change the URL in the examples to match
+`HEURCHAIN_PORT` from `deploy/.env`.
+
+```bash
 git clone https://github.com/peterjohannmedina/heurchain.git
 cd heurchain
 cp deploy/.env.example deploy/.env
@@ -26,14 +30,29 @@ chmod 600 deploy/.env
 # Edit deploy/.env: set ADMIN_USER and a long random ADMIN_PASS.
 docker compose -f deploy/compose.yaml up -d --build
 docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
-curl -s http://127.0.0.1:8080/health
+curl -fsS http://127.0.0.1:8080/ready
+```
+
+```powershell
+git clone https://github.com/peterjohannmedina/heurchain.git
+Set-Location heurchain
+Copy-Item deploy/.env.example deploy/.env
+# Edit deploy/.env: set ADMIN_USER and a long random ADMIN_PASS.
+docker compose -f deploy/compose.yaml up -d --build
+docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
+Invoke-RestMethod http://127.0.0.1:8080/ready
 ```
 
 On first start the broker creates its SQLite database from the built-in schema.
+`/ready` checks SQLite, Redis and Qdrant. If the model pull or readiness check fails
+while the stack is starting, wait briefly and try again. Use
+`docker compose -f deploy/compose.yaml ps` to see stalled services. The write below
+also verifies the embedder.
 
 ### Prebuilt broker image
 
-`--build` compiles the broker from this checkout. Without it, `docker compose up -d` pulls the
+`--build` compiles the broker from this checkout. Without it,
+`docker compose -f deploy/compose.yaml up -d` pulls the
 prebuilt multi-arch image (linux/amd64, linux/arm64) from
 `ghcr.io/peterjohannmedina/heurchain-broker` and builds from source only if it cannot pull.
 That skips the Go toolchain image (about 860 MB) and the compile. Images are published from
@@ -69,26 +88,68 @@ so switching later means re-storing or starting a new store.
 
 A tenant is an isolated memory space (a person, a team, or a project). Each tenant has its own API keys.
 
-```sh
-curl -s -u "$ADMIN_USER:$ADMIN_PASS" -X POST http://127.0.0.1:8080/admin/tenants \
+Compose loads the admin values for the broker. For a manual request, enter the
+same username and password from `deploy/.env` at the prompts.
+
+```bash
+read -r -p 'Broker admin username: ' ADMIN_USER
+curl -fsS --user "$ADMIN_USER" -X POST http://127.0.0.1:8080/admin/tenants \
   -H 'Content-Type: application/json' \
   -d '{"name":"My team","email":"me@example.com"}'
 ```
 
+```powershell
+# PowerShell 7.2+. Use unencrypted Basic auth only at the loopback URL below.
+$BrokerAdmin = Get-Credential -UserName (Read-Host 'Broker admin username') -Message 'Enter the broker admin password'
+$Tenant = Invoke-RestMethod http://127.0.0.1:8080/admin/tenants -Method Post `
+  -Authentication Basic -Credential $BrokerAdmin -AllowUnencryptedAuthentication `
+  -ContentType 'application/json' -Body '{"name":"My team","email":"me@example.com"}'
+```
+
 The response contains `tenant_id` and `api_key`. The key is shown once; store it in your
-secret manager. Every request sends the tenant in `X-HeurChain-Tenant: <tenant_id>` and the
+secret manager and keep it out of logs and screenshots. In PowerShell, the response stays
+in `$Tenant`. If you installed from npm, use the ID and key returned by `npx heurchain tenant`.
+Every request sends the tenant in `X-HeurChain-Tenant: <tenant_id>` and the
 key in `X-HeurChain-API-Key: <api_key>` (or as `Authorization: Bearer <api_key>`).
 
 ### Try it
 
-```sh
-KEY=...      # api_key from above
-TENANT=...   # tenant_id from above
+The search sends a separate request and should return the ID from the write receipt.
+
+```bash
+read -r -p 'Tenant ID: ' TENANT
+read -r -s -p 'API key: ' KEY
+printf '\n'
 H=(-H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" -H 'Content-Type: application/json')
-curl -s http://127.0.0.1:8080/store "${H[@]}" \
+curl -fsS http://127.0.0.1:8080/store "${H[@]}" \
   -d '{"agent_id":"me","text":"The staging database moved to port 5433 on 2026-11-01.","tags":["fact"]}'
-curl -s http://127.0.0.1:8080/search "${H[@]}" -d '{"text":"staging database port"}'
+curl -fsS http://127.0.0.1:8080/search "${H[@]}" -d '{"text":"staging database port"}'
 ```
+
+```powershell
+if (-not $Tenant) {
+  # For npm setup, enter the values returned by npx heurchain tenant.
+  $Tenant = @{
+    tenant_id = Read-Host 'Tenant ID'
+    api_key = Read-Host 'API key' -MaskInput
+  }
+}
+$MemoryHeaders = @{
+  'X-HeurChain-API-Key' = $Tenant.api_key
+  'X-HeurChain-Tenant' = $Tenant.tenant_id
+}
+$Saved = Invoke-RestMethod http://127.0.0.1:8080/store -Method Post -Headers $MemoryHeaders `
+  -ContentType 'application/json' -Body '{"agent_id":"me","text":"The staging database moved to port 5433 on 2026-11-01.","tags":["fact"]}'
+$Found = Invoke-RestMethod http://127.0.0.1:8080/search -Method Post -Headers $MemoryHeaders `
+  -ContentType 'application/json' -Body '{"text":"staging database port"}'
+$Saved
+$Found.results | Where-Object id -eq $Saved.id
+```
+
+A successful write reports `stored: true` and an `id`. With `indexed: false`, the
+memory was stored and indexing needs attention. Check the broker and index service
+logs before relying on search. A complete smoke test returns the same ID and the
+port decision from the separate search request.
 
 `GET /openapi.json` describes every endpoint.
 
