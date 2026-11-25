@@ -13,7 +13,8 @@
 > runbook), it runs a memory search and hands the agent the matching records together with
 > your prompt. Prompts that stand on their own are never sent, and it is easy to turn off.
 >
-> One command connects the agent, installs the memory skill and turns this on:
+> One command connects the agent and installs the memory skill. Automatic recall
+> is enabled by default only on qualified builds:
 > `node tools/setup/cli.mjs connect --client claude --tenant <tenant_id> --apply`
 > ([setup guide](https://github.com/peterjohannmedina/heurchain/blob/master/docs/agent-setup.md)). It works with the existing 0.6.1-oss.1 broker,
 > with no broker upgrade. It is on by default for Claude Code 2.1.329 and Codex CLI 0.170.0 on
@@ -52,7 +53,7 @@ unit for native installs, and the docs. No accounts, billing or cloud services a
 |---|---|
 | Connect an MCP client | [MCP connection guide and registry descriptor](mcp/README.md): choose the hosted service **or** your self-hosted broker. |
 | Teach an agent to use a connected HeurChain store | [HeurChain memory skill](skills/heurchain-memory/SKILL.md). This is an optional instruction file, not an MCP server or installer. |
-| **Run HeurChain** (the memory server) | **This repository**: `git clone`, then `docker compose up` ([quick start](#quick-start)) |
+| **Run HeurChain** (the memory server) | **This repository**: clone the repo and run `docker compose -f deploy/compose.yaml up -d --build` after configuring `deploy/.env`. See the [quick start](#quick-start). |
 | Install and run everything from npm | The [`heurchain` npm package](https://www.npmjs.com/package/heurchain): the broker source and Compose stack, a `heurchain` CLI (`npx heurchain init`, `up`, `tenant`, `connect`), agent setup, the skill and `AGENT_CONFIG.json`. Needs Docker Compose. |
 | The old 1.x Node.js server | Deprecated. Still installable as `heurchain@1`; see [Upgrading from 1.x](#upgrading-from-1x). |
 
@@ -102,50 +103,24 @@ The diagram sources are in [`docs/diagrams/`](docs/diagrams) (Mermaid).
 
 ## Quick start
 
-From npm, without cloning: `npx heurchain init && npx heurchain up`, then
-`npx heurchain tenant --name "My team" --email me@example.com` (Node 20+ and Docker Compose v2;
-see the [npm package](https://www.npmjs.com/package/heurchain)). Or from this repository:
+From npm, without cloning, run these commands in order. They require Node 20+,
+Docker Engine and Compose 2.20 or later. See the [npm package](https://www.npmjs.com/package/heurchain).
 
-You need Docker Engine with Compose 2.20 or later and internet access for the first start
-(container images and the embedding model; `--build` also downloads Go modules). Without
-`--build`, Compose pulls the prebuilt broker image instead of compiling it. To use an embedder
-you already run instead of the bundled Ollama, see
-[docs/install.md](docs/install.md#using-an-embedder-you-already-run).
-
-```sh
-git clone https://github.com/peterjohannmedina/heurchain.git
-cd heurchain
-cp deploy/.env.example deploy/.env      # set ADMIN_USER and a long random ADMIN_PASS
-docker compose -f deploy/compose.yaml up -d --build
-docker compose -f deploy/compose.yaml exec ollama ollama pull nomic-embed-text
-curl -s http://127.0.0.1:8080/health
+```text
+npx heurchain init
+npx heurchain up
+npx heurchain tenant --name "My team" --email me@example.com
 ```
 
-All ports are published on `127.0.0.1` only. To reach the broker from other machines, put a
-TLS reverse proxy in front of it ([docs/install.md](docs/install.md#exposing-it-beyond-localhost)).
+To build from a clone, follow the [Docker Compose install](docs/install.md#docker-compose)
+and [create a tenant](docs/install.md#create-a-tenant-and-api-key) for your shell.
+The first start downloads images and the embedding model. The broker listens on
+`127.0.0.1` by default.
 
-**Create a tenant and API key.** The key is shown once.
-
-```sh
-curl -s -u "$ADMIN_USER:$ADMIN_PASS" -X POST http://127.0.0.1:8080/admin/tenants \
-  -H 'Content-Type: application/json' -d '{"name":"My team","email":"me@example.com"}'
-# -> {"tenant_id": "...", "api_key": "...", ...}
-```
-
-**Store something and find it again.**
-
-```sh
-KEY=...      # api_key from above
-TENANT=...   # tenant_id from above
-H=(-H "X-HeurChain-API-Key: $KEY" -H "X-HeurChain-Tenant: $TENANT" -H 'Content-Type: application/json')
-curl -s http://127.0.0.1:8080/store "${H[@]}" \
-  -d '{"agent_id":"me","text":"The staging database moved to port 5433 on 2026-11-01.","tags":["fact"]}'
-curl -s http://127.0.0.1:8080/search "${H[@]}" -d '{"text":"which port does staging db use"}'
-```
-
-These exact steps run on every change to `broker/` or `deploy/` in the
-[self-host smoke test](.github/workflows/selfhost-smoke.yml): clean checkout, build, model
-pull, tenant, store, hybrid search, sessions, MCP, and a full stack restart.
+For either path, [store a synthetic decision and recall the same record](docs/install.md#try-it).
+Wait for readiness, confirm the write receipt, and compare the record ID on a fresh
+search before connecting an agent. The [self-host smoke test](.github/workflows/selfhost-smoke.yml)
+checks the same flow, including MCP and recall after a full stack restart.
 
 ## Connect your agents
 
@@ -159,11 +134,11 @@ uninstall, without touching other MCP servers or hooks:
 HEURCHAIN_API_KEY=... node tools/setup/cli.mjs connect --client claude --tenant <tenant_id> --apply
 ```
 
-See [docs/agent-setup.md](docs/agent-setup.md) for the client matrix, the off switches and what
-is not verified.
+See [docs/agent-setup.md](docs/agent-setup.md) for the qualified versions and how to
+review the hook. You can call the store and search tools directly with the hook off.
 
 **MCP (Streamable HTTP)** at `http://<host>:8080/mcp/sse`, with the same two headers. For
-Claude Code:
+Claude Code (Bash, with `KEY` and `TENANT` from [the REST check](docs/install.md#try-it)):
 
 ```sh
 claude mcp add --transport http heurchain http://127.0.0.1:8080/mcp/sse \
